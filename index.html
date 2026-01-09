@@ -370,8 +370,14 @@
             pointer-events: all;
         }
 
-        .annotation-layer:hover {
-            background: rgba(0, 187, 136, 0.02);
+        .annotation-layer.tool-active {
+            border: 3px dashed var(--primary-color);
+            background: rgba(0, 187, 136, 0.03);
+        }
+
+        .annotation-layer.tool-active:hover {
+            background: rgba(0, 187, 136, 0.08);
+            border-style: solid;
         }
 
         /* Editable Elements */
@@ -1033,6 +1039,15 @@
                 <div class="toolbar-divider"></div>
 
                 <div class="toolbar-group">
+                    <button class="toolbar-btn" id="testClickBtn" title="Test if PDF is clickable">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <span>Test Click</span>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group">
                     <button class="toolbar-btn" id="zoomOutBtn">
                         <i class="fas fa-search-minus"></i>
                     </button>
@@ -1207,7 +1222,7 @@
             elements: [],
             history: [],
             historyIndex: -1,
-            scale: 1.5,
+            scale: 2.0, // Increased from 1.5 to 2.0 for better visibility
             fileName: '',
             signature: null
         };
@@ -1277,6 +1292,7 @@
             // Toolbar buttons
             document.getElementById('undoBtn').addEventListener('click', undo);
             document.getElementById('redoBtn').addEventListener('click', redo);
+            document.getElementById('testClickBtn').addEventListener('click', testPDFClickable);
             document.getElementById('zoomInBtn').addEventListener('click', () => zoom(0.1));
             document.getElementById('zoomOutBtn').addEventListener('click', () => zoom(-0.1));
             document.getElementById('propertiesBtn').addEventListener('click', togglePropertiesPanel);
@@ -1437,7 +1453,6 @@
                     await page.render({ canvasContext: context, viewport: viewport }).promise;
                 } catch (renderError) {
                     console.error('Error rendering page ' + pageNum + ':', renderError);
-                    // Show error on canvas
                     context.fillStyle = '#f8f9fa';
                     context.fillRect(0, 0, canvas.width, canvas.height);
                     context.fillStyle = '#e74c3c';
@@ -1448,18 +1463,45 @@
 
                 wrapper.appendChild(canvas);
 
-                // Add annotation layer
+                // Add annotation layer with EXPLICIT positioning
                 const annotationLayer = document.createElement('div');
                 annotationLayer.className = 'annotation-layer';
                 annotationLayer.dataset.page = pageNum;
                 annotationLayer.style.width = viewport.width + 'px';
                 annotationLayer.style.height = viewport.height + 'px';
+                annotationLayer.style.position = 'absolute';
+                annotationLayer.style.top = '0';
+                annotationLayer.style.left = '0';
+                annotationLayer.style.zIndex = '100';
+                annotationLayer.style.pointerEvents = 'all';
+                
+                // Add visual indicator for debugging
+                annotationLayer.title = `Click to edit Page ${pageNum}`;
+                
                 wrapper.appendChild(annotationLayer);
 
                 // Click handler for adding elements
-                annotationLayer.addEventListener('click', (e) => handleCanvasClick(e, pageNum));
+                annotationLayer.addEventListener('click', (e) => {
+                    console.log('Annotation layer clicked for page', pageNum);
+                    handleCanvasClick(e, pageNum);
+                });
+
+                // Add hover effect for feedback
+                annotationLayer.addEventListener('mouseenter', () => {
+                    if (state.currentTool) {
+                        annotationLayer.style.backgroundColor = 'rgba(0, 187, 136, 0.1)';
+                    }
+                });
+
+                annotationLayer.addEventListener('mouseleave', () => {
+                    if (!state.currentTool || !annotationLayer.classList.contains('tool-active')) {
+                        annotationLayer.style.backgroundColor = '';
+                    }
+                });
 
                 container.appendChild(wrapper);
+                
+                console.log('Page', pageNum, 'rendered with annotation layer');
             } catch (error) {
                 console.error('Error setting up page ' + pageNum + ':', error);
                 showAlert('Error loading page ' + pageNum + ': ' + error.message, 'warning');
@@ -1481,12 +1523,20 @@
 
             state.currentTool = tool;
 
-            // Add visual feedback to pages
+            // Add visual feedback to pages and annotation layers
             document.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
                 if (tool) {
                     wrapper.classList.add('tool-active');
                 } else {
                     wrapper.classList.remove('tool-active');
+                }
+            });
+
+            document.querySelectorAll('.annotation-layer').forEach(layer => {
+                if (tool) {
+                    layer.classList.add('tool-active');
+                } else {
+                    layer.classList.remove('tool-active');
                 }
             });
 
@@ -1549,18 +1599,32 @@
 
         // Canvas Click Handler
         function handleCanvasClick(e, pageNum) {
-            if (!state.currentTool) return;
+            console.log('Canvas clicked!', {
+                pageNum: pageNum,
+                currentTool: state.currentTool,
+                targetElement: e.target,
+                targetClass: e.target.className
+            });
+
+            if (!state.currentTool) {
+                showAlert('⚠️ Please select a tool from the sidebar first!', 'warning');
+                return;
+            }
 
             const rect = e.currentTarget.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
+            console.log('Click position:', { x, y });
+
             switch (state.currentTool) {
                 case 'text':
+                    console.log('Adding text at', x, y);
                     addText(pageNum, x, y);
                     break;
                 case 'signature':
                     if (state.signature) {
+                        console.log('Adding signature at', x, y);
                         addSignature(pageNum, x, y);
                     } else {
                         showAlert('Please create a signature first', 'warning');
@@ -1568,26 +1632,35 @@
                     }
                     break;
                 case 'rectangle':
+                    console.log('Starting rectangle draw');
                     startDrawingShape(e, pageNum, 'rectangle');
                     break;
                 case 'circle':
+                    console.log('Starting circle draw');
                     startDrawingShape(e, pageNum, 'circle');
                     break;
                 case 'line':
+                    console.log('Starting line draw');
                     startDrawingShape(e, pageNum, 'line');
                     break;
                 case 'arrow':
+                    console.log('Starting arrow draw');
                     startDrawingShape(e, pageNum, 'arrow');
                     break;
                 case 'whiteout':
+                    console.log('Starting whiteout draw');
                     startDrawingWhiteout(e, pageNum);
                     break;
                 case 'delete-page':
+                    console.log('Deleting page', pageNum);
                     deletePage(pageNum);
                     break;
                 case 'rotate-page':
+                    console.log('Rotating page', pageNum);
                     rotatePage(pageNum);
                     break;
+                default:
+                    console.log('Unknown tool:', state.currentTool);
             }
         }
 
@@ -2377,6 +2450,63 @@
 
         function togglePropertiesPanel() {
             document.getElementById('propertiesPanel').classList.toggle('active');
+        }
+
+        // Test PDF Clickable
+        function testPDFClickable() {
+            showAlert('Testing PDF layers... Click anywhere on the PDF!', 'info');
+            
+            // Add temporary click listeners to all layers
+            const layers = document.querySelectorAll('.annotation-layer');
+            let clickCount = 0;
+            
+            layers.forEach((layer, index) => {
+                const pageNum = layer.dataset.page;
+                
+                // Add visible indicator
+                layer.style.outline = '3px solid red';
+                layer.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+                
+                const testHandler = (e) => {
+                    clickCount++;
+                    const rect = layer.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    showAlert(`✅ PDF is clickable! Page ${pageNum} clicked at (${Math.round(x)}, ${Math.round(y)})`, 'success');
+                    
+                    // Add a test marker
+                    const marker = document.createElement('div');
+                    marker.style.position = 'absolute';
+                    marker.style.left = x + 'px';
+                    marker.style.top = y + 'px';
+                    marker.style.width = '20px';
+                    marker.style.height = '20px';
+                    marker.style.background = 'red';
+                    marker.style.borderRadius = '50%';
+                    marker.style.border = '3px solid white';
+                    marker.style.zIndex = '1000';
+                    marker.style.pointerEvents = 'none';
+                    layer.appendChild(marker);
+                    
+                    // Remove test styling after 2 seconds
+                    setTimeout(() => {
+                        layer.style.outline = '';
+                        layer.style.backgroundColor = '';
+                        layer.removeEventListener('click', testHandler);
+                        marker.remove();
+                    }, 2000);
+                };
+                
+                layer.addEventListener('click', testHandler);
+            });
+            
+            setTimeout(() => {
+                layers.forEach(layer => {
+                    layer.style.outline = '';
+                    layer.style.backgroundColor = '';
+                });
+            }, 10000);
         }
 
         // Zoom
