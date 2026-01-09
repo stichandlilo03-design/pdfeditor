@@ -370,6 +370,35 @@
             50% { opacity: 0.7; }
         }
 
+        /* Text Layer for Click-to-Edit */
+        .text-layer-interactive {
+            position: absolute;
+            overflow: visible;
+        }
+
+        .pdf-text-item {
+            position: absolute;
+            white-space: pre;
+            cursor: text;
+            transition: all 0.15s ease;
+        }
+
+        .pdf-text-item:hover {
+            background: rgba(37, 99, 235, 0.15) !important;
+            outline: 1px dashed rgba(37, 99, 235, 0.6) !important;
+            color: rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .editing-existing {
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2), var(--shadow-lg);
+            animation: editPulse 0.5s ease;
+        }
+
+        @keyframes editPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
         /* Text Layer */
         .text-layer {
             position: absolute;
@@ -1429,7 +1458,7 @@
                 
                 // Show helpful instructions after a moment
                 setTimeout(() => {
-                    showAlert('👈 Select a tool from the sidebar to start editing', 'info');
+                    showAlert('💡 Click any text to edit it, or select a tool from sidebar to add new elements', 'info');
                 }, 2000);
             } catch (error) {
                 console.error('Error loading PDF:', error);
@@ -1468,6 +1497,7 @@
                 wrapper.className = 'pdf-page-wrapper';
                 wrapper.dataset.page = pageNum;
                 wrapper.style.width = viewport.width + 'px';
+                wrapper.style.position = 'relative';
 
                 const badge = document.createElement('div');
                 badge.className = 'page-number-badge';
@@ -1501,6 +1531,76 @@
 
                 wrapper.appendChild(canvas);
 
+                // Extract text content for click-to-edit
+                try {
+                    const textContent = await page.getTextContent();
+                    const textLayer = document.createElement('div');
+                    textLayer.className = 'text-layer-interactive';
+                    textLayer.style.position = 'absolute';
+                    textLayer.style.left = '0';
+                    textLayer.style.top = '0';
+                    textLayer.style.width = viewport.width + 'px';
+                    textLayer.style.height = viewport.height + 'px';
+                    textLayer.style.zIndex = '5';
+                    textLayer.style.pointerEvents = 'none';
+
+                    textContent.items.forEach((item, index) => {
+                        const tx = viewport.transform;
+                        const textDiv = document.createElement('div');
+                        textDiv.className = 'pdf-text-item';
+                        textDiv.style.position = 'absolute';
+                        textDiv.style.pointerEvents = 'all';
+                        textDiv.style.cursor = 'text';
+                        textDiv.style.padding = '2px 4px';
+                        textDiv.style.borderRadius = '3px';
+                        textDiv.style.transition = 'all 0.2s ease';
+                        
+                        // Transform coordinates
+                        const transform = item.transform;
+                        const x = transform[4];
+                        const y = viewport.height - transform[5];
+                        const fontSize = Math.sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
+                        
+                        textDiv.style.left = x + 'px';
+                        textDiv.style.top = (y - fontSize) + 'px';
+                        textDiv.style.fontSize = fontSize + 'px';
+                        textDiv.style.fontFamily = item.fontName || 'sans-serif';
+                        textDiv.textContent = item.str;
+                        textDiv.style.whiteSpace = 'pre';
+                        textDiv.style.color = 'transparent';
+                        textDiv.style.userSelect = 'text';
+                        
+                        textDiv.dataset.originalText = item.str;
+                        textDiv.dataset.x = x;
+                        textDiv.dataset.y = y - fontSize;
+                        textDiv.dataset.fontSize = fontSize;
+                        
+                        // Hover effect
+                        textDiv.addEventListener('mouseenter', () => {
+                            textDiv.style.backgroundColor = 'rgba(37, 99, 235, 0.1)';
+                            textDiv.style.outline = '1px dashed rgba(37, 99, 235, 0.5)';
+                        });
+                        
+                        textDiv.addEventListener('mouseleave', () => {
+                            textDiv.style.backgroundColor = '';
+                            textDiv.style.outline = '';
+                        });
+                        
+                        // Click to edit
+                        textDiv.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            console.log('Text clicked:', item.str);
+                            editExistingText(textDiv, pageNum, textLayer);
+                        });
+                        
+                        textLayer.appendChild(textDiv);
+                    });
+                    
+                    wrapper.appendChild(textLayer);
+                } catch (textError) {
+                    console.warn('Could not extract text for page', pageNum, textError);
+                }
+
                 // Add annotation layer with EXPLICIT positioning
                 const annotationLayer = document.createElement('div');
                 annotationLayer.className = 'annotation-layer';
@@ -1513,21 +1613,22 @@
                 annotationLayer.style.zIndex = '100';
                 annotationLayer.style.pointerEvents = 'all';
                 
-                // Add visual indicator for debugging
-                annotationLayer.title = `Click to edit Page ${pageNum}`;
+                annotationLayer.title = `Click to add elements on Page ${pageNum}`;
                 
                 wrapper.appendChild(annotationLayer);
 
-                // Click handler for adding elements
+                // Click handler for adding NEW elements (when tool is selected)
                 annotationLayer.addEventListener('click', (e) => {
-                    console.log('Annotation layer clicked for page', pageNum);
-                    handleCanvasClick(e, pageNum);
+                    // Only handle if a tool is selected and not clicking on an existing element
+                    if (state.currentTool && e.target === annotationLayer) {
+                        console.log('Annotation layer clicked for page', pageNum);
+                        handleCanvasClick(e, pageNum);
+                    }
                 });
 
                 // Add hover effect for feedback - subtle only
                 annotationLayer.addEventListener('mouseenter', () => {
                     if (state.currentTool) {
-                        // Just show cursor change, no background
                         annotationLayer.style.cursor = getCursorForTool(state.currentTool);
                     }
                 });
@@ -1538,11 +1639,116 @@
 
                 container.appendChild(wrapper);
                 
-                console.log('Page', pageNum, 'rendered with annotation layer');
+                console.log('Page', pageNum, 'rendered with text layer and annotation layer');
             } catch (error) {
                 console.error('Error setting up page ' + pageNum + ':', error);
                 showAlert('Error loading page ' + pageNum + ': ' + error.message, 'warning');
             }
+        }
+
+        // Edit existing PDF text
+        function editExistingText(textDiv, pageNum, textLayer) {
+            // Get position and text
+            const originalText = textDiv.dataset.originalText;
+            const x = parseFloat(textDiv.dataset.x);
+            const y = parseFloat(textDiv.dataset.y);
+            const fontSize = parseFloat(textDiv.dataset.fontSize);
+            
+            // Hide the original text div
+            textDiv.style.display = 'none';
+            
+            // Create editable text element
+            const layer = document.querySelector(`.annotation-layer[data-page="${pageNum}"]`);
+            
+            const textElement = document.createElement('div');
+            textElement.className = 'editable-text editing-existing';
+            textElement.style.left = x + 'px';
+            textElement.style.top = y + 'px';
+            textElement.style.fontSize = fontSize + 'px';
+            textElement.style.fontFamily = 'Helvetica';
+            textElement.style.color = '#000000';
+            textElement.style.position = 'absolute';
+            textElement.style.width = Math.max(200, textDiv.offsetWidth + 50) + 'px';
+            textElement.style.zIndex = '200';
+            textElement.style.background = 'rgba(255, 255, 255, 0.95)';
+            textElement.style.border = '2px solid #2563eb';
+
+            const textarea = document.createElement('textarea');
+            textarea.value = originalText;
+            textarea.rows = 1;
+            
+            textarea.addEventListener('input', () => {
+                textElement.dataset.content = textarea.value;
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.max(textarea.scrollHeight, 30) + 'px';
+            });
+
+            textarea.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+
+            textarea.addEventListener('blur', () => {
+                // If text is empty, restore original
+                if (!textarea.value.trim()) {
+                    textDiv.style.display = '';
+                    textElement.remove();
+                    showAlert('Text editing cancelled', 'info');
+                }
+            });
+
+            textElement.appendChild(textarea);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                textDiv.style.display = '';
+                textElement.remove();
+                showAlert('Text editing cancelled', 'info');
+            });
+            textElement.appendChild(deleteBtn);
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'delete-btn';
+            saveBtn.style.background = '#10b981';
+            saveBtn.style.right = '40px';
+            saveBtn.innerHTML = '<i class="fas fa-check"></i>';
+            saveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Keep the editable version, hide original permanently
+                textDiv.remove();
+                saveBtn.remove();
+                
+                // Add standard controls
+                addResizeHandles(textElement);
+                makeDraggable(textElement);
+                
+                textElement.classList.remove('editing-existing');
+                textElement.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement(textElement);
+                });
+
+                state.elements.push({
+                    type: 'text',
+                    element: textElement,
+                    page: pageNum
+                });
+
+                addToHistory('Edited PDF text');
+                showAlert('Text saved! You can now move and resize it', 'success');
+            });
+            textElement.appendChild(saveBtn);
+
+            layer.appendChild(textElement);
+            
+            setTimeout(() => {
+                textarea.focus();
+                textarea.select();
+            }, 50);
+
+            showAlert('✏️ Edit the text, then click ✓ to save or × to cancel', 'info');
         }
 
         // Tool Activation
