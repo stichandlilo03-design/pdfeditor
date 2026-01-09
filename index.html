@@ -370,54 +370,38 @@
             50% { opacity: 0.7; }
         }
 
-        /* Text Layer for Click-to-Edit */
+        /* Text Layer - SIMPLE AND WORKING */
         .text-layer-interactive {
             position: absolute;
-            overflow: hidden;
-            line-height: 1;
-            z-index: 10 !important;
-            pointer-events: none;
+            z-index: 50 !important;
+            pointer-events: none !important;
+            display: none;
+        }
+        
+        .text-layer-interactive.active {
+            pointer-events: auto !important;
+            display: block !important;
         }
 
         .pdf-text-item {
             position: absolute;
             white-space: pre;
-            cursor: text;
-            outline: 2px dashed transparent;
-            overflow: hidden;
+            cursor: text !important;
             color: transparent;
-            transition: outline-color 0.15s ease;
-            pointer-events: all !important;
+            outline: 2px solid transparent;
+            transition: outline 0.2s;
+            pointer-events: auto !important;
+            z-index: 50 !important;
+            user-select: none;
         }
 
         .pdf-text-item:hover {
-            outline-color: #0282e5 !important;
+            outline: 2px solid #0282e5 !important;
             background: rgba(2, 130, 229, 0.05);
         }
 
         .pdf-text-item.editing {
-            outline-color: #0282e5;
-        }
-
-        .text-edit-overlay {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            border-radius: 4px;
-            z-index: 200 !important;
-        }
-
-        .text-edit-overlay input {
-            font-family: Helvetica, sans-serif;
-        }
-
-        .editing-existing {
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2), var(--shadow-lg);
-            animation: editPulse 0.5s ease;
-            z-index: 200 !important;
-        }
-
-        @keyframes editPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
+            outline: 2px solid #0282e5 !important;
         }
 
         /* Text Layer */
@@ -1550,9 +1534,7 @@
                     context.fillText('Error rendering page ' + pageNum, canvas.width / 2, canvas.height / 2);
                 }
 
-                wrapper.appendChild(canvas);
-
-                // Extract text content for click-to-edit (like Sejda)
+                // Extract text content and make it editable
                 try {
                     const textContent = await page.getTextContent();
                     const textLayer = document.createElement('div');
@@ -1562,71 +1544,70 @@
                     textLayer.style.top = '0';
                     textLayer.style.width = viewport.width + 'px';
                     textLayer.style.height = viewport.height + 'px';
-                    textLayer.style.overflow = 'hidden';
-                    textLayer.style.lineHeight = '1';
-                    textLayer.style.zIndex = '10';
-                    textLayer.style.pointerEvents = 'none';
+                    textLayer.style.zIndex = '50';
+                    textLayer.style.pointerEvents = 'auto';
 
                     textContent.items.forEach((item) => {
                         const textDiv = document.createElement('div');
                         textDiv.className = 'pdf-text-item';
-                        textDiv.style.position = 'absolute';
-                        textDiv.style.whiteSpace = 'pre';
-                        textDiv.style.cursor = 'text';
-                        textDiv.style.pointerEvents = 'all';
-                        textDiv.style.zIndex = '10';
                         
-                        // Transform coordinates exactly like Sejda does
+                        // Calculate position
                         const transform = item.transform;
                         const fontHeight = Math.sqrt(transform[2] * transform[2] + transform[3] * transform[3]);
                         const x = transform[4];
                         const y = viewport.height - transform[5] - fontHeight;
                         
+                        textDiv.style.position = 'absolute';
                         textDiv.style.left = x + 'px';
                         textDiv.style.top = y + 'px';
                         textDiv.style.fontSize = fontHeight + 'px';
-                        textDiv.style.fontFamily = item.fontName || 'sans-serif';
-                        
-                        // Make text transparent but keep it selectable
+                        textDiv.style.fontFamily = 'sans-serif';
+                        textDiv.style.whiteSpace = 'pre';
+                        textDiv.style.cursor = 'text';
+                        textDiv.style.padding = '2px';
                         textDiv.style.color = 'transparent';
-                        textDiv.textContent = item.str;
+                        textDiv.style.outline = '2px solid transparent';
+                        textDiv.style.transition = 'outline 0.2s';
+                        textDiv.style.pointerEvents = 'auto';
+                        textDiv.style.zIndex = '50';
                         
-                        // Store original data
+                        textDiv.textContent = item.str;
                         textDiv.dataset.originalText = item.str;
                         textDiv.dataset.x = x;
                         textDiv.dataset.y = y;
                         textDiv.dataset.fontSize = fontHeight;
                         
-                        // Visual outline on hover (like Sejda)
-                        textDiv.style.outline = '2px dashed transparent';
-                        textDiv.style.transition = 'outline-color 0.2s ease';
-                        
+                        // Hover effect
                         textDiv.addEventListener('mouseenter', () => {
-                            textDiv.style.outlineColor = '#0282e5';
+                            textDiv.style.outline = '2px solid #0282e5';
                         });
                         
                         textDiv.addEventListener('mouseleave', () => {
                             if (!textDiv.classList.contains('editing')) {
-                                textDiv.style.outlineColor = 'transparent';
+                                textDiv.style.outline = '2px solid transparent';
                             }
                         });
                         
-                        // Click to edit - THIS IS THE KEY FIX
+                        // Click to edit - SUPER SIMPLE
                         textDiv.addEventListener('click', (e) => {
-                            e.stopPropagation(); // CRITICAL: Stop event from bubbling
-                            console.log('Individual text clicked:', item.str);
-                            editExistingText(textDiv, pageNum);
+                            e.stopPropagation();
+                            e.preventDefault();
+                            console.log('TEXT CLICKED:', item.str);
+                            makeTextEditable(textDiv, pageNum);
                         });
                         
                         textLayer.appendChild(textDiv);
                     });
                     
                     wrapper.appendChild(textLayer);
+                    console.log('Text layer created with', textContent.items.length, 'items');
                 } catch (textError) {
-                    console.warn('Could not extract text for page', pageNum, textError);
+                    console.warn('Could not extract text:', textError);
                 }
 
-                // Add annotation layer BELOW text layer
+                wrapper.appendChild(canvas);
+
+                // Add annotation layer for NEW elements
                 const annotationLayer = document.createElement('div');
                 annotationLayer.className = 'annotation-layer';
                 annotationLayer.dataset.page = pageNum;
@@ -1637,8 +1618,6 @@
                 annotationLayer.style.left = '0';
                 annotationLayer.style.zIndex = '1';
                 annotationLayer.style.pointerEvents = 'all';
-                
-                annotationLayer.title = `Click to add elements on Page ${pageNum}`;
                 
                 wrapper.appendChild(annotationLayer);
 
@@ -1660,87 +1639,75 @@
             }
         }
 
-        // Edit existing PDF text - SIMPLIFIED VERSION LIKE SEJDA
-        function editExistingText(textDiv, pageNum) {
-            // Mark as editing
-            textDiv.classList.add('editing');
-            textDiv.style.outlineColor = '#0282e5';
+        // SIMPLE text editing that actually works
+        function makeTextEditable(textDiv, pageNum) {
+            console.log('Making text editable');
             
-            // Get position and text
+            textDiv.classList.add('editing');
+            textDiv.style.outline = '2px solid #0282e5';
+            
             const originalText = textDiv.dataset.originalText;
             const x = parseFloat(textDiv.dataset.x);
             const y = parseFloat(textDiv.dataset.y);
             const fontSize = parseFloat(textDiv.dataset.fontSize);
             
-            // Create editable overlay
-            const editOverlay = document.createElement('div');
-            editOverlay.className = 'text-edit-overlay';
-            editOverlay.style.position = 'absolute';
-            editOverlay.style.left = x + 'px';
-            editOverlay.style.top = y + 'px';
-            editOverlay.style.zIndex = '200';
-            editOverlay.style.background = 'white';
-            editOverlay.style.border = '2px solid #0282e5';
-            editOverlay.style.padding = '4px';
-            editOverlay.style.minWidth = '100px';
-
+            // Create simple input
             const input = document.createElement('input');
             input.type = 'text';
             input.value = originalText;
+            input.style.position = 'absolute';
+            input.style.left = x + 'px';
+            input.style.top = y + 'px';
             input.style.fontSize = fontSize + 'px';
-            input.style.border = 'none';
-            input.style.outline = 'none';
-            input.style.width = '100%';
-            input.style.background = 'transparent';
+            input.style.zIndex = '500';
+            input.style.border = '2px solid #0282e5';
+            input.style.padding = '2px 4px';
+            input.style.background = 'white';
+            input.style.minWidth = '100px';
             
-            editOverlay.appendChild(input);
-            
-            // Add to page
             const layer = textDiv.parentElement.parentElement.querySelector('.annotation-layer');
-            layer.appendChild(editOverlay);
+            layer.appendChild(input);
             
-            // Focus input
-            setTimeout(() => {
-                input.focus();
-                input.select();
-            }, 10);
-            
-            // Handle save
-            const saveEdit = () => {
-                const newText = input.value;
-                
-                if (newText && newText !== originalText) {
-                    // Hide original text
-                    textDiv.style.display = 'none';
-                    
-                    // Create new editable text element
-                    addTextAtPosition(pageNum, x, y, newText, fontSize);
-                    
-                    showAlert('Text updated!', 'success');
-                } else {
-                    textDiv.classList.remove('editing');
-                    textDiv.style.outlineColor = 'transparent';
-                }
-                
-                editOverlay.remove();
-            };
+            input.focus();
+            input.select();
             
             // Save on Enter
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveEdit();
-                } else if (e.key === 'Escape') {
-                    editOverlay.remove();
+                    const newText = input.value;
+                    if (newText && newText !== originalText) {
+                        textDiv.style.display = 'none';
+                        addTextAtPosition(pageNum, x, y, newText, fontSize);
+                        showAlert('✓ Text updated!', 'success');
+                    }
+                    input.remove();
                     textDiv.classList.remove('editing');
-                    textDiv.style.outlineColor = 'transparent';
+                } else if (e.key === 'Escape') {
+                    input.remove();
+                    textDiv.classList.remove('editing');
+                    textDiv.style.outline = '2px solid transparent';
                 }
             });
             
             // Save on blur
             input.addEventListener('blur', () => {
-                setTimeout(saveEdit, 100);
+                setTimeout(() => {
+                    const newText = input.value;
+                    if (newText && newText !== originalText) {
+                        textDiv.style.display = 'none';
+                        addTextAtPosition(pageNum, x, y, newText, fontSize);
+                        showAlert('✓ Text updated!', 'success');
+                    }
+                    input.remove();
+                    textDiv.classList.remove('editing');
+                    textDiv.style.outline = '2px solid transparent';
+                }, 100);
             });
+        }
+
+        // Edit existing PDF text - SIMPLIFIED VERSION LIKE SEJDA
+        function editExistingText(textDiv, pageNum) {
+            makeTextEditable(textDiv, pageNum);
         }
 
         // Helper function to add text at specific position
@@ -1829,10 +1796,33 @@
             document.querySelectorAll('.annotation-layer').forEach(layer => {
                 if (tool) {
                     layer.classList.add('tool-active');
+                    
+                    // CRITICAL: Make annotation layer transparent when text tool is active
+                    if (tool === 'text') {
+                        layer.style.pointerEvents = 'none';
+                        layer.style.background = 'transparent';
+                    } else {
+                        layer.style.pointerEvents = 'all';
+                    }
                 } else {
                     layer.classList.remove('tool-active');
+                    layer.style.pointerEvents = 'all';
                 }
             });
+            
+            // Enable/disable text layer clicks based on tool
+            document.querySelectorAll('.text-layer-interactive').forEach(textLayer => {
+                if (tool === 'text') {
+                    textLayer.classList.add('active');
+                } else {
+                    textLayer.classList.remove('active');
+                }
+            });
+
+            // Show instruction when text tool is active
+            if (tool === 'text') {
+                showAlert('💡 Click any text on the PDF to edit it!', 'info', 5000);
+            }
 
             // Special handling for some tools
             if (tool === 'signature') {
