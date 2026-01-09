@@ -373,20 +373,35 @@
         /* Text Layer for Click-to-Edit */
         .text-layer-interactive {
             position: absolute;
-            overflow: visible;
+            overflow: hidden;
+            line-height: 1;
         }
 
         .pdf-text-item {
             position: absolute;
             white-space: pre;
             cursor: text;
-            transition: all 0.15s ease;
+            outline: 2px dashed transparent;
+            overflow: hidden;
+            color: transparent;
+            transition: outline-color 0.15s ease;
         }
 
         .pdf-text-item:hover {
-            background: rgba(37, 99, 235, 0.15) !important;
-            outline: 1px dashed rgba(37, 99, 235, 0.6) !important;
-            color: rgba(0, 0, 0, 0.3) !important;
+            outline-color: #0282e5;
+        }
+
+        .pdf-text-item.editing {
+            outline-color: #0282e5;
+        }
+
+        .text-edit-overlay {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+        }
+
+        .text-edit-overlay input {
+            font-family: Helvetica, sans-serif;
         }
 
         .editing-existing {
@@ -1531,7 +1546,7 @@
 
                 wrapper.appendChild(canvas);
 
-                // Extract text content for click-to-edit
+                // Extract text content for click-to-edit (like Sejda)
                 try {
                     const textContent = await page.getTextContent();
                     const textLayer = document.createElement('div');
@@ -1541,56 +1556,57 @@
                     textLayer.style.top = '0';
                     textLayer.style.width = viewport.width + 'px';
                     textLayer.style.height = viewport.height + 'px';
+                    textLayer.style.overflow = 'hidden';
+                    textLayer.style.lineHeight = '1';
                     textLayer.style.zIndex = '5';
-                    textLayer.style.pointerEvents = 'none';
 
-                    textContent.items.forEach((item, index) => {
-                        const tx = viewport.transform;
+                    textContent.items.forEach((item) => {
                         const textDiv = document.createElement('div');
                         textDiv.className = 'pdf-text-item';
                         textDiv.style.position = 'absolute';
-                        textDiv.style.pointerEvents = 'all';
+                        textDiv.style.whiteSpace = 'pre';
                         textDiv.style.cursor = 'text';
-                        textDiv.style.padding = '2px 4px';
-                        textDiv.style.borderRadius = '3px';
-                        textDiv.style.transition = 'all 0.2s ease';
                         
-                        // Transform coordinates
+                        // Transform coordinates exactly like Sejda does
                         const transform = item.transform;
+                        const fontHeight = Math.sqrt(transform[2] * transform[2] + transform[3] * transform[3]);
                         const x = transform[4];
-                        const y = viewport.height - transform[5];
-                        const fontSize = Math.sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
+                        const y = viewport.height - transform[5] - fontHeight;
                         
                         textDiv.style.left = x + 'px';
-                        textDiv.style.top = (y - fontSize) + 'px';
-                        textDiv.style.fontSize = fontSize + 'px';
+                        textDiv.style.top = y + 'px';
+                        textDiv.style.fontSize = fontHeight + 'px';
                         textDiv.style.fontFamily = item.fontName || 'sans-serif';
-                        textDiv.textContent = item.str;
-                        textDiv.style.whiteSpace = 'pre';
-                        textDiv.style.color = 'transparent';
-                        textDiv.style.userSelect = 'text';
                         
+                        // Make text transparent but keep it selectable
+                        textDiv.style.color = 'transparent';
+                        textDiv.textContent = item.str;
+                        
+                        // Store original data
                         textDiv.dataset.originalText = item.str;
                         textDiv.dataset.x = x;
-                        textDiv.dataset.y = y - fontSize;
-                        textDiv.dataset.fontSize = fontSize;
+                        textDiv.dataset.y = y;
+                        textDiv.dataset.fontSize = fontHeight;
                         
-                        // Hover effect
+                        // Visual outline on hover (like Sejda)
+                        textDiv.style.outline = '2px dashed transparent';
+                        textDiv.style.transition = 'outline-color 0.2s ease';
+                        
                         textDiv.addEventListener('mouseenter', () => {
-                            textDiv.style.backgroundColor = 'rgba(37, 99, 235, 0.1)';
-                            textDiv.style.outline = '1px dashed rgba(37, 99, 235, 0.5)';
+                            textDiv.style.outlineColor = '#0282e5';
                         });
                         
                         textDiv.addEventListener('mouseleave', () => {
-                            textDiv.style.backgroundColor = '';
-                            textDiv.style.outline = '';
+                            if (!textDiv.classList.contains('editing')) {
+                                textDiv.style.outlineColor = 'transparent';
+                            }
                         });
                         
-                        // Click to edit
+                        // Click to edit - THIS IS THE KEY FIX
                         textDiv.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            console.log('Text clicked:', item.str);
-                            editExistingText(textDiv, pageNum, textLayer);
+                            e.stopPropagation(); // CRITICAL: Stop event from bubbling
+                            console.log('Individual text clicked:', item.str);
+                            editExistingText(textDiv, pageNum);
                         });
                         
                         textLayer.appendChild(textDiv);
@@ -1619,22 +1635,11 @@
 
                 // Click handler for adding NEW elements (when tool is selected)
                 annotationLayer.addEventListener('click', (e) => {
-                    // Only handle if a tool is selected and not clicking on an existing element
+                    // Only handle if a tool is selected and clicking directly on layer
                     if (state.currentTool && e.target === annotationLayer) {
                         console.log('Annotation layer clicked for page', pageNum);
                         handleCanvasClick(e, pageNum);
                     }
-                });
-
-                // Add hover effect for feedback - subtle only
-                annotationLayer.addEventListener('mouseenter', () => {
-                    if (state.currentTool) {
-                        annotationLayer.style.cursor = getCursorForTool(state.currentTool);
-                    }
-                });
-
-                annotationLayer.addEventListener('mouseleave', () => {
-                    annotationLayer.style.cursor = '';
                 });
 
                 container.appendChild(wrapper);
@@ -1646,37 +1651,107 @@
             }
         }
 
-        // Edit existing PDF text
-        function editExistingText(textDiv, pageNum, textLayer) {
+        // Edit existing PDF text - SIMPLIFIED VERSION LIKE SEJDA
+        function editExistingText(textDiv, pageNum) {
+            // Mark as editing
+            textDiv.classList.add('editing');
+            textDiv.style.outlineColor = '#0282e5';
+            
             // Get position and text
             const originalText = textDiv.dataset.originalText;
             const x = parseFloat(textDiv.dataset.x);
             const y = parseFloat(textDiv.dataset.y);
             const fontSize = parseFloat(textDiv.dataset.fontSize);
             
-            // Hide the original text div
-            textDiv.style.display = 'none';
+            // Create editable overlay
+            const editOverlay = document.createElement('div');
+            editOverlay.className = 'text-edit-overlay';
+            editOverlay.style.position = 'absolute';
+            editOverlay.style.left = x + 'px';
+            editOverlay.style.top = y + 'px';
+            editOverlay.style.zIndex = '200';
+            editOverlay.style.background = 'white';
+            editOverlay.style.border = '2px solid #0282e5';
+            editOverlay.style.padding = '4px';
+            editOverlay.style.minWidth = '100px';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalText;
+            input.style.fontSize = fontSize + 'px';
+            input.style.border = 'none';
+            input.style.outline = 'none';
+            input.style.width = '100%';
+            input.style.background = 'transparent';
             
-            // Create editable text element
+            editOverlay.appendChild(input);
+            
+            // Add to page
+            const layer = textDiv.parentElement.parentElement.querySelector('.annotation-layer');
+            layer.appendChild(editOverlay);
+            
+            // Focus input
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 10);
+            
+            // Handle save
+            const saveEdit = () => {
+                const newText = input.value;
+                
+                if (newText && newText !== originalText) {
+                    // Hide original text
+                    textDiv.style.display = 'none';
+                    
+                    // Create new editable text element
+                    addTextAtPosition(pageNum, x, y, newText, fontSize);
+                    
+                    showAlert('Text updated!', 'success');
+                } else {
+                    textDiv.classList.remove('editing');
+                    textDiv.style.outlineColor = 'transparent';
+                }
+                
+                editOverlay.remove();
+            };
+            
+            // Save on Enter
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    editOverlay.remove();
+                    textDiv.classList.remove('editing');
+                    textDiv.style.outlineColor = 'transparent';
+                }
+            });
+            
+            // Save on blur
+            input.addEventListener('blur', () => {
+                setTimeout(saveEdit, 100);
+            });
+        }
+
+        // Helper function to add text at specific position
+        function addTextAtPosition(pageNum, x, y, text, fontSize) {
             const layer = document.querySelector(`.annotation-layer[data-page="${pageNum}"]`);
             
             const textElement = document.createElement('div');
-            textElement.className = 'editable-text editing-existing';
+            textElement.className = 'editable-text';
             textElement.style.left = x + 'px';
             textElement.style.top = y + 'px';
             textElement.style.fontSize = fontSize + 'px';
             textElement.style.fontFamily = 'Helvetica';
             textElement.style.color = '#000000';
             textElement.style.position = 'absolute';
-            textElement.style.width = Math.max(200, textDiv.offsetWidth + 50) + 'px';
-            textElement.style.zIndex = '200';
-            textElement.style.background = 'rgba(255, 255, 255, 0.95)';
-            textElement.style.border = '2px solid #2563eb';
+            textElement.style.width = 'auto';
+            textElement.style.minWidth = '100px';
 
             const textarea = document.createElement('textarea');
-            textarea.value = originalText;
+            textarea.value = text;
             textarea.rows = 1;
-            
             textarea.addEventListener('input', () => {
                 textElement.dataset.content = textarea.value;
                 textarea.style.height = 'auto';
@@ -1687,15 +1762,6 @@
                 e.stopPropagation();
             });
 
-            textarea.addEventListener('blur', () => {
-                // If text is empty, restore original
-                if (!textarea.value.trim()) {
-                    textDiv.style.display = '';
-                    textElement.remove();
-                    showAlert('Text editing cancelled', 'info');
-                }
-            });
-
             textElement.appendChild(textarea);
 
             const deleteBtn = document.createElement('button');
@@ -1703,52 +1769,28 @@
             deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                textDiv.style.display = '';
                 textElement.remove();
-                showAlert('Text editing cancelled', 'info');
+                state.elements = state.elements.filter(el => el.element !== textElement);
             });
             textElement.appendChild(deleteBtn);
 
-            const saveBtn = document.createElement('button');
-            saveBtn.className = 'delete-btn';
-            saveBtn.style.background = '#10b981';
-            saveBtn.style.right = '40px';
-            saveBtn.innerHTML = '<i class="fas fa-check"></i>';
-            saveBtn.addEventListener('click', (e) => {
+            addResizeHandles(textElement);
+            makeDraggable(textElement);
+            
+            textElement.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Keep the editable version, hide original permanently
-                textDiv.remove();
-                saveBtn.remove();
-                
-                // Add standard controls
-                addResizeHandles(textElement);
-                makeDraggable(textElement);
-                
-                textElement.classList.remove('editing-existing');
-                textElement.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    selectElement(textElement);
-                });
-
-                state.elements.push({
-                    type: 'text',
-                    element: textElement,
-                    page: pageNum
-                });
-
-                addToHistory('Edited PDF text');
-                showAlert('Text saved! You can now move and resize it', 'success');
+                selectElement(textElement);
             });
-            textElement.appendChild(saveBtn);
 
             layer.appendChild(textElement);
-            
-            setTimeout(() => {
-                textarea.focus();
-                textarea.select();
-            }, 50);
 
-            showAlert('✏️ Edit the text, then click ✓ to save or × to cancel', 'info');
+            state.elements.push({
+                type: 'text',
+                element: textElement,
+                page: pageNum
+            });
+
+            addToHistory('Edited text');
         }
 
         // Tool Activation
