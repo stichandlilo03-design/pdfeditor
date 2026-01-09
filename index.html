@@ -1456,18 +1456,43 @@
             // Special handling for some tools
             if (tool === 'signature') {
                 openSignatureModal();
+                return;
             } else if (tool === 'image') {
                 selectImage();
+                return;
             } else if (tool === 'find-replace') {
-                // TODO: Implement find & replace
-                showAlert('Find & Replace feature coming soon!', 'info');
-                state.currentTool = null;
+                showAlert('Find & Replace: Click text to edit it directly!', 'info');
+            } else if (tool === 'delete-page') {
+                showAlert('Click on a page to delete it', 'info');
+            } else if (tool === 'rotate-page') {
+                showAlert('Click on a page to rotate it', 'info');
             }
+
+            // Show instruction for active tool
+            showToolInstruction(tool);
 
             // Update cursor
             document.querySelectorAll('.annotation-layer').forEach(layer => {
                 layer.style.cursor = getCursorForTool(tool);
             });
+        }
+
+        function showToolInstruction(tool) {
+            const instructions = {
+                text: 'Click anywhere on the PDF to add text',
+                image: 'Select an image, then click on the PDF to place it',
+                signature: 'Create your signature, then click on the PDF to place it',
+                rectangle: 'Click and drag to draw a rectangle',
+                circle: 'Click and drag to draw a circle',
+                line: 'Click and drag to draw a line',
+                arrow: 'Click and drag to draw an arrow',
+                highlight: 'Select text to highlight it',
+                whiteout: 'Click and drag to cover content with white box'
+            };
+
+            if (instructions[tool]) {
+                showAlert(instructions[tool], 'info');
+            }
         }
 
         function getCursorForTool(tool) {
@@ -1500,17 +1525,277 @@
                 case 'signature':
                     if (state.signature) {
                         addSignature(pageNum, x, y);
+                    } else {
+                        showAlert('Please create a signature first', 'warning');
+                        openSignatureModal();
                     }
                     break;
                 case 'rectangle':
-                    addShape(pageNum, x, y, 'rectangle');
+                    startDrawingShape(e, pageNum, 'rectangle');
                     break;
                 case 'circle':
-                    addShape(pageNum, x, y, 'circle');
+                    startDrawingShape(e, pageNum, 'circle');
+                    break;
+                case 'line':
+                    startDrawingShape(e, pageNum, 'line');
+                    break;
+                case 'arrow':
+                    startDrawingShape(e, pageNum, 'arrow');
                     break;
                 case 'whiteout':
-                    addWhiteout(pageNum, x, y);
+                    startDrawingWhiteout(e, pageNum);
                     break;
+                case 'delete-page':
+                    deletePage(pageNum);
+                    break;
+                case 'rotate-page':
+                    rotatePage(pageNum);
+                    break;
+            }
+        }
+
+        // Start drawing shape with drag
+        function startDrawingShape(e, pageNum, shapeType) {
+            const layer = e.currentTarget;
+            const rect = layer.getBoundingClientRect();
+            const startX = e.clientX - rect.left;
+            const startY = e.clientY - rect.top;
+
+            const shapeElement = document.createElement('div');
+            shapeElement.className = 'shape-element';
+            shapeElement.style.left = startX + 'px';
+            shapeElement.style.top = startY + 'px';
+            shapeElement.style.width = '0px';
+            shapeElement.style.height = '0px';
+            shapeElement.style.position = 'absolute';
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.style.overflow = 'visible';
+
+            let shapeEl;
+            if (shapeType === 'rectangle') {
+                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                shapeEl.setAttribute('width', '100%');
+                shapeEl.setAttribute('height', '100%');
+                shapeEl.setAttribute('fill', 'none');
+                shapeEl.setAttribute('stroke', '#e74c3c');
+                shapeEl.setAttribute('stroke-width', '3');
+            } else if (shapeType === 'circle') {
+                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+                shapeEl.setAttribute('cx', '50%');
+                shapeEl.setAttribute('cy', '50%');
+                shapeEl.setAttribute('rx', '50%');
+                shapeEl.setAttribute('ry', '50%');
+                shapeEl.setAttribute('fill', 'none');
+                shapeEl.setAttribute('stroke', '#3498db');
+                shapeEl.setAttribute('stroke-width', '3');
+            } else if (shapeType === 'line') {
+                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                shapeEl.setAttribute('x1', '0');
+                shapeEl.setAttribute('y1', '0');
+                shapeEl.setAttribute('x2', '100%');
+                shapeEl.setAttribute('y2', '100%');
+                shapeEl.setAttribute('stroke', '#2c3e50');
+                shapeEl.setAttribute('stroke-width', '3');
+            } else if (shapeType === 'arrow') {
+                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                shapeEl.setAttribute('x1', '0');
+                shapeEl.setAttribute('y1', '50%');
+                shapeEl.setAttribute('x2', '100%');
+                shapeEl.setAttribute('y2', '50%');
+                shapeEl.setAttribute('stroke', '#f39c12');
+                shapeEl.setAttribute('stroke-width', '3');
+                shapeEl.setAttribute('marker-end', 'url(#arrowhead)');
+                
+                // Add arrowhead marker
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', 'arrowhead');
+                marker.setAttribute('markerWidth', '10');
+                marker.setAttribute('markerHeight', '10');
+                marker.setAttribute('refX', '9');
+                marker.setAttribute('refY', '3');
+                marker.setAttribute('orient', 'auto');
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', '0 0, 10 3, 0 6');
+                polygon.setAttribute('fill', '#f39c12');
+                marker.appendChild(polygon);
+                defs.appendChild(marker);
+                svg.appendChild(defs);
+            }
+
+            svg.appendChild(shapeEl);
+            shapeElement.appendChild(svg);
+            layer.appendChild(shapeElement);
+
+            function onMouseMove(moveEvent) {
+                const currentX = moveEvent.clientX - rect.left;
+                const currentY = moveEvent.clientY - rect.top;
+                
+                const width = Math.abs(currentX - startX);
+                const height = Math.abs(currentY - startY);
+                const left = Math.min(startX, currentX);
+                const top = Math.min(startY, currentY);
+
+                shapeElement.style.left = left + 'px';
+                shapeElement.style.top = top + 'px';
+                shapeElement.style.width = width + 'px';
+                shapeElement.style.height = height + 'px';
+            }
+
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+
+                // Only keep if size is reasonable
+                if (parseInt(shapeElement.style.width) > 10 && parseInt(shapeElement.style.height) > 10) {
+                    finishShape(shapeElement, pageNum, shapeType);
+                } else {
+                    shapeElement.remove();
+                }
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function finishShape(shapeElement, pageNum, shapeType) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                shapeElement.remove();
+                state.elements = state.elements.filter(el => el.element !== shapeElement);
+            });
+            shapeElement.appendChild(deleteBtn);
+
+            addResizeHandles(shapeElement);
+            makeDraggable(shapeElement);
+            shapeElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectElement(shapeElement);
+            });
+
+            state.elements.push({
+                type: 'shape',
+                element: shapeElement,
+                page: pageNum,
+                shapeType: shapeType
+            });
+
+            addToHistory('Added ' + shapeType);
+        }
+
+        // Start drawing whiteout with drag
+        function startDrawingWhiteout(e, pageNum) {
+            const layer = e.currentTarget;
+            const rect = layer.getBoundingClientRect();
+            const startX = e.clientX - rect.left;
+            const startY = e.clientY - rect.top;
+
+            const whiteout = document.createElement('div');
+            whiteout.className = 'whiteout-box';
+            whiteout.style.left = startX + 'px';
+            whiteout.style.top = startY + 'px';
+            whiteout.style.width = '0px';
+            whiteout.style.height = '0px';
+            whiteout.style.position = 'absolute';
+
+            layer.appendChild(whiteout);
+
+            function onMouseMove(moveEvent) {
+                const currentX = moveEvent.clientX - rect.left;
+                const currentY = moveEvent.clientY - rect.top;
+                
+                const width = Math.abs(currentX - startX);
+                const height = Math.abs(currentY - startY);
+                const left = Math.min(startX, currentX);
+                const top = Math.min(startY, currentY);
+
+                whiteout.style.left = left + 'px';
+                whiteout.style.top = top + 'px';
+                whiteout.style.width = width + 'px';
+                whiteout.style.height = height + 'px';
+            }
+
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+
+                if (parseInt(whiteout.style.width) > 10 && parseInt(whiteout.style.height) > 10) {
+                    finishWhiteout(whiteout, pageNum);
+                } else {
+                    whiteout.remove();
+                }
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function finishWhiteout(whiteout, pageNum) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                whiteout.remove();
+                state.elements = state.elements.filter(el => el.element !== whiteout);
+            });
+            whiteout.appendChild(deleteBtn);
+
+            addResizeHandles(whiteout);
+            makeDraggable(whiteout);
+            whiteout.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectElement(whiteout);
+            });
+
+            state.elements.push({
+                type: 'whiteout',
+                element: whiteout,
+                page: pageNum
+            });
+
+            addToHistory('Added whiteout');
+        }
+
+        // Page management
+        function deletePage(pageNum) {
+            if (state.pdfDoc.numPages <= 1) {
+                showAlert('Cannot delete the last page', 'warning');
+                return;
+            }
+
+            if (confirm(`Delete page ${pageNum}?`)) {
+                const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${pageNum}"]`);
+                if (wrapper) {
+                    wrapper.remove();
+                    showAlert(`Page ${pageNum} deleted`, 'success');
+                    
+                    // Remove elements from this page
+                    state.elements = state.elements.filter(el => el.page !== pageNum);
+                }
+            }
+        }
+
+        function rotatePage(pageNum) {
+            const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${pageNum}"]`);
+            if (wrapper) {
+                const currentRotation = parseInt(wrapper.dataset.rotation || '0');
+                const newRotation = (currentRotation + 90) % 360;
+                wrapper.dataset.rotation = newRotation;
+                
+                const canvas = wrapper.querySelector('canvas');
+                const annotationLayer = wrapper.querySelector('.annotation-layer');
+                
+                canvas.style.transform = `rotate(${newRotation}deg)`;
+                annotationLayer.style.transform = `rotate(${newRotation}deg)`;
+                
+                showAlert(`Page ${pageNum} rotated`, 'success');
             }
         }
 
@@ -1525,11 +1810,16 @@
             textElement.style.fontSize = '16px';
             textElement.style.fontFamily = 'Helvetica';
             textElement.style.color = '#000000';
+            textElement.style.position = 'absolute';
 
             const textarea = document.createElement('textarea');
             textarea.placeholder = 'Type text here...';
+            textarea.style.minWidth = '150px';
             textarea.addEventListener('input', () => {
                 textElement.dataset.content = textarea.value;
+                // Auto-resize textarea
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
             });
 
             textElement.appendChild(textarea);
@@ -1540,6 +1830,8 @@
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 textElement.remove();
+                state.elements = state.elements.filter(el => el.element !== textElement);
+                showAlert('Text element deleted', 'info');
             });
             textElement.appendChild(deleteBtn);
 
@@ -1559,6 +1851,7 @@
             });
 
             addToHistory('Added text');
+            showAlert('Text added! Start typing...', 'success');
         }
 
         // Add Image
@@ -1572,7 +1865,9 @@
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         state.imageToAdd = event.target.result;
-                        showAlert('Click on the PDF to place the image', 'info');
+                        showAlert('Now click on the PDF to place the image', 'success');
+                        // Keep the image tool active
+                        state.currentTool = 'image';
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1587,8 +1882,9 @@
             imageElement.className = 'editable-image';
             imageElement.style.left = x + 'px';
             imageElement.style.top = y + 'px';
-            imageElement.style.width = '150px';
-            imageElement.style.height = '150px';
+            imageElement.style.width = '200px';
+            imageElement.style.height = '200px';
+            imageElement.style.position = 'absolute';
 
             const img = document.createElement('img');
             img.src = imageSrc;
@@ -1600,6 +1896,7 @@
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 imageElement.remove();
+                state.elements = state.elements.filter(el => el.element !== imageElement);
             });
             imageElement.appendChild(deleteBtn);
 
@@ -1621,6 +1918,7 @@
 
             state.imageToAdd = null;
             addToHistory('Added image');
+            showAlert('Image added! You can resize and move it', 'success');
         }
 
         // Signature
@@ -2141,6 +2439,16 @@
                 alert.style.animation = 'slideInRight 0.3s ease reverse';
                 setTimeout(() => alert.remove(), 300);
             }, 3000);
+        }
+
+        // Signature
+        function addSignature(pageNum, x, y) {
+            if (!state.signature) {
+                showAlert('Please create a signature first', 'warning');
+                return;
+            }
+            addImage(pageNum, x, y, state.signature);
+            showAlert('Signature added!', 'success');
         }
 
         // Keyboard Shortcuts
