@@ -307,6 +307,15 @@
             box-shadow: var(--shadow-md);
             position: relative;
             margin: 0 auto;
+            transition: all 0.2s ease;
+        }
+
+        .pdf-page-wrapper:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .pdf-page-wrapper.tool-active:hover {
+            box-shadow: 0 8px 32px rgba(0, 187, 136, 0.2);
         }
 
         .pdf-page-canvas {
@@ -357,35 +366,44 @@
             left: 0;
             right: 0;
             bottom: 0;
+            z-index: 10;
+            pointer-events: all;
+        }
+
+        .annotation-layer:hover {
+            background: rgba(0, 187, 136, 0.02);
         }
 
         /* Editable Elements */
         .editable-text {
             position: absolute;
             border: 2px dashed transparent;
-            padding: 4px;
-            cursor: text;
+            padding: 8px;
+            cursor: move;
             transition: all 0.2s ease;
-            min-width: 100px;
-            min-height: 30px;
-            background: white;
+            min-width: 150px;
+            min-height: 40px;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 4px;
             box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
         }
 
         .editable-text:hover {
             border-color: var(--primary-color);
+            background: white;
         }
 
         .editable-text.selected {
             border-color: var(--primary-color);
             border-style: solid;
             box-shadow: 0 0 0 4px rgba(0, 187, 136, 0.1);
+            background: white;
         }
 
         .editable-text textarea {
             width: 100%;
-            height: 100%;
             border: none;
             outline: none;
             resize: none;
@@ -393,7 +411,9 @@
             font-size: inherit;
             color: inherit;
             background: transparent;
-            padding: 4px;
+            padding: 0;
+            overflow: hidden;
+            line-height: 1.4;
         }
 
         .editable-image {
@@ -1348,6 +1368,9 @@
 
                 await renderAllPages();
                 
+                // Initialize history with empty state
+                addToHistory('PDF loaded');
+                
                 // Show editor
                 document.getElementById('uploadSection').style.display = 'none';
                 document.getElementById('editorContainer').classList.add('active');
@@ -1355,6 +1378,11 @@
                 document.getElementById('newDocBtn').style.display = 'flex';
 
                 showAlert('PDF loaded successfully! ' + state.pdfDoc.numPages + ' pages', 'success');
+                
+                // Show helpful instructions after a moment
+                setTimeout(() => {
+                    showAlert('👈 Select a tool from the sidebar to start editing', 'info');
+                }, 2000);
             } catch (error) {
                 console.error('Error loading PDF:', error);
                 
@@ -1452,6 +1480,15 @@
             }
 
             state.currentTool = tool;
+
+            // Add visual feedback to pages
+            document.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
+                if (tool) {
+                    wrapper.classList.add('tool-active');
+                } else {
+                    wrapper.classList.remove('tool-active');
+                }
+            });
 
             // Special handling for some tools
             if (tool === 'signature') {
@@ -1811,15 +1848,21 @@
             textElement.style.fontFamily = 'Helvetica';
             textElement.style.color = '#000000';
             textElement.style.position = 'absolute';
+            textElement.style.width = '200px';
 
             const textarea = document.createElement('textarea');
             textarea.placeholder = 'Type text here...';
-            textarea.style.minWidth = '150px';
+            textarea.rows = 1;
             textarea.addEventListener('input', () => {
                 textElement.dataset.content = textarea.value;
-                // Auto-resize textarea
+                // Auto-resize textarea height
                 textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
+                textarea.style.height = Math.max(textarea.scrollHeight, 30) + 'px';
+            });
+
+            // Prevent dragging when typing
+            textarea.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
             });
 
             textElement.appendChild(textarea);
@@ -1832,17 +1875,25 @@
                 textElement.remove();
                 state.elements = state.elements.filter(el => el.element !== textElement);
                 showAlert('Text element deleted', 'info');
+                addToHistory('Deleted text');
             });
             textElement.appendChild(deleteBtn);
 
+            // Add resize handles for text elements
+            addResizeHandles(textElement);
             makeDraggable(textElement);
+            
             textElement.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectElement(textElement);
             });
 
             layer.appendChild(textElement);
-            textarea.focus();
+            
+            // Focus and position cursor at end
+            setTimeout(() => {
+                textarea.focus();
+            }, 50);
 
             state.elements.push({
                 type: 'text',
@@ -1851,7 +1902,7 @@
             });
 
             addToHistory('Added text');
-            showAlert('Text added! Start typing...', 'success');
+            showAlert('Text added! Drag corners to resize', 'success');
         }
 
         // Add Image
@@ -2193,6 +2244,8 @@
 
         function startResize(e, element, position) {
             e.stopPropagation();
+            e.preventDefault();
+            
             const startX = e.clientX;
             const startY = e.clientY;
             const startWidth = element.offsetWidth;
@@ -2200,29 +2253,45 @@
             const startLeft = element.offsetLeft;
             const startTop = element.offsetTop;
 
+            // Prevent text selection during resize
+            document.body.style.userSelect = 'none';
+
             function resize(e) {
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
 
                 if (position.includes('e')) {
-                    element.style.width = (startWidth + dx) + 'px';
+                    const newWidth = Math.max(100, startWidth + dx);
+                    element.style.width = newWidth + 'px';
                 }
                 if (position.includes('w')) {
-                    element.style.width = (startWidth - dx) + 'px';
+                    const newWidth = Math.max(100, startWidth - dx);
+                    element.style.width = newWidth + 'px';
                     element.style.left = (startLeft + dx) + 'px';
                 }
                 if (position.includes('s')) {
-                    element.style.height = (startHeight + dy) + 'px';
+                    const newHeight = Math.max(30, startHeight + dy);
+                    element.style.height = newHeight + 'px';
                 }
                 if (position.includes('n')) {
-                    element.style.height = (startHeight - dy) + 'px';
+                    const newHeight = Math.max(30, startHeight - dy);
+                    element.style.height = newHeight + 'px';
                     element.style.top = (startTop + dy) + 'px';
+                }
+
+                // Update textarea if it exists
+                const textarea = element.querySelector('textarea');
+                if (textarea) {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = Math.max(textarea.scrollHeight, 30) + 'px';
                 }
             }
 
             function stopResize() {
                 document.removeEventListener('mousemove', resize);
                 document.removeEventListener('mouseup', stopResize);
+                document.body.style.userSelect = '';
+                addToHistory('Resized element');
             }
 
             document.addEventListener('mousemove', resize);
@@ -2317,18 +2386,140 @@
             renderAllPages();
         }
 
-        // History
+        // History management
         function addToHistory(action) {
-            // TODO: Implement proper history
-            console.log('History:', action);
+            // Remove any future history if we're not at the end
+            if (state.historyIndex < state.history.length - 1) {
+                state.history = state.history.slice(0, state.historyIndex + 1);
+            }
+
+            // Save current state
+            const historyState = {
+                action: action,
+                elements: state.elements.map(el => ({
+                    type: el.type,
+                    page: el.page,
+                    html: el.element.outerHTML,
+                    style: {
+                        left: el.element.style.left,
+                        top: el.element.style.top,
+                        width: el.element.style.width,
+                        height: el.element.style.height,
+                        fontSize: el.element.style.fontSize,
+                        fontFamily: el.element.style.fontFamily,
+                        color: el.element.style.color
+                    },
+                    content: el.type === 'text' ? el.element.querySelector('textarea')?.value : null,
+                    src: el.src
+                })),
+                timestamp: Date.now()
+            };
+
+            state.history.push(historyState);
+            state.historyIndex++;
+
+            updateHistoryButtons();
+            console.log('History added:', action, 'Index:', state.historyIndex);
         }
 
         function undo() {
-            showAlert('Undo feature coming soon!', 'info');
+            if (state.historyIndex > 0) {
+                state.historyIndex--;
+                restoreHistoryState(state.history[state.historyIndex]);
+                showAlert('Undo: ' + state.history[state.historyIndex].action, 'info');
+                updateHistoryButtons();
+            } else {
+                showAlert('Nothing to undo', 'warning');
+            }
         }
 
         function redo() {
-            showAlert('Redo feature coming soon!', 'info');
+            if (state.historyIndex < state.history.length - 1) {
+                state.historyIndex++;
+                restoreHistoryState(state.history[state.historyIndex]);
+                showAlert('Redo: ' + state.history[state.historyIndex].action, 'success');
+                updateHistoryButtons();
+            } else {
+                showAlert('Nothing to redo', 'warning');
+            }
+        }
+
+        function restoreHistoryState(historyState) {
+            // Clear all current elements
+            document.querySelectorAll('.editable-text, .editable-image, .whiteout-box, .shape-element').forEach(el => {
+                el.remove();
+            });
+
+            state.elements = [];
+
+            // Restore elements from history
+            historyState.elements.forEach(savedEl => {
+                const layer = document.querySelector(`.annotation-layer[data-page="${savedEl.page}"]`);
+                if (!layer) return;
+
+                // Create element from saved HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = savedEl.html;
+                const element = tempDiv.firstChild;
+
+                // Restore styles
+                Object.assign(element.style, savedEl.style);
+
+                // Restore content for text elements
+                if (savedEl.type === 'text' && savedEl.content) {
+                    const textarea = element.querySelector('textarea');
+                    if (textarea) {
+                        textarea.value = savedEl.content;
+                    }
+                }
+
+                // Re-attach event listeners
+                const deleteBtn = element.querySelector('.delete-btn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        element.remove();
+                        state.elements = state.elements.filter(el => el.element !== element);
+                    });
+                }
+
+                makeDraggable(element);
+                element.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement(element);
+                });
+
+                if (savedEl.type === 'text') {
+                    const textarea = element.querySelector('textarea');
+                    if (textarea) {
+                        textarea.addEventListener('input', () => {
+                            element.dataset.content = textarea.value;
+                            textarea.style.height = 'auto';
+                            textarea.style.height = textarea.scrollHeight + 'px';
+                        });
+                    }
+                }
+
+                layer.appendChild(element);
+
+                state.elements.push({
+                    type: savedEl.type,
+                    element: element,
+                    page: savedEl.page,
+                    src: savedEl.src
+                });
+            });
+        }
+
+        function updateHistoryButtons() {
+            const undoBtn = document.getElementById('undoBtn');
+            const redoBtn = document.getElementById('redoBtn');
+
+            undoBtn.disabled = state.historyIndex <= 0;
+            redoBtn.disabled = state.historyIndex >= state.history.length - 1;
+
+            undoBtn.style.opacity = undoBtn.disabled ? '0.5' : '1';
+            redoBtn.style.opacity = redoBtn.disabled ? '0.5' : '1';
         }
 
         // Save PDF
