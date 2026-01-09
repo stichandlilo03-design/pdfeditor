@@ -314,8 +314,12 @@
             box-shadow: var(--shadow-lg);
         }
 
+        .pdf-page-wrapper.tool-active {
+            box-shadow: 0 0 0 2px var(--primary-color);
+        }
+
         .pdf-page-wrapper.tool-active:hover {
-            box-shadow: 0 8px 32px rgba(0, 187, 136, 0.2);
+            box-shadow: 0 0 0 3px var(--primary-color), var(--shadow-lg);
         }
 
         .pdf-page-canvas {
@@ -337,6 +341,33 @@
             font-size: 12px;
             font-weight: 600;
             box-shadow: var(--shadow-sm);
+            z-index: 5;
+        }
+
+        .edit-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--primary-color);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            display: none;
+            align-items: center;
+            gap: 5px;
+            z-index: 5;
+            animation: pulse 2s infinite;
+        }
+
+        .pdf-page-wrapper.tool-active .edit-indicator {
+            display: flex;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         /* Text Layer */
@@ -368,16 +399,17 @@
             bottom: 0;
             z-index: 10;
             pointer-events: all;
+            transition: all 0.2s ease;
         }
 
         .annotation-layer.tool-active {
-            border: 3px dashed var(--primary-color);
-            background: rgba(0, 187, 136, 0.03);
+            /* Subtle indicator only on hover, not always visible */
+            background: transparent;
         }
 
         .annotation-layer.tool-active:hover {
-            background: rgba(0, 187, 136, 0.08);
-            border-style: solid;
+            background: rgba(0, 187, 136, 0.05);
+            box-shadow: inset 0 0 0 2px rgba(0, 187, 136, 0.3);
         }
 
         /* Editable Elements */
@@ -1442,6 +1474,12 @@
                 badge.textContent = `Page ${pageNum}`;
                 wrapper.appendChild(badge);
 
+                // Add edit indicator
+                const editIndicator = document.createElement('div');
+                editIndicator.className = 'edit-indicator';
+                editIndicator.innerHTML = '<i class="fas fa-mouse-pointer"></i> Click to Edit';
+                wrapper.appendChild(editIndicator);
+
                 const canvas = document.createElement('canvas');
                 canvas.className = 'pdf-page-canvas';
                 canvas.width = viewport.width;
@@ -1486,17 +1524,16 @@
                     handleCanvasClick(e, pageNum);
                 });
 
-                // Add hover effect for feedback
+                // Add hover effect for feedback - subtle only
                 annotationLayer.addEventListener('mouseenter', () => {
                     if (state.currentTool) {
-                        annotationLayer.style.backgroundColor = 'rgba(0, 187, 136, 0.1)';
+                        // Just show cursor change, no background
+                        annotationLayer.style.cursor = getCursorForTool(state.currentTool);
                     }
                 });
 
                 annotationLayer.addEventListener('mouseleave', () => {
-                    if (!state.currentTool || !annotationLayer.classList.contains('tool-active')) {
-                        annotationLayer.style.backgroundColor = '';
-                    }
+                    annotationLayer.style.cursor = '';
                 });
 
                 container.appendChild(wrapper);
