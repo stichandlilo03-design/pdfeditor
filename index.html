@@ -1007,13 +1007,13 @@
             <div class="tool-section">
                 <div class="tool-section-title">Text</div>
                 <div class="tool-grid">
-                    <button class="tool-btn" data-tool="text">
+                    <button class="tool-btn" data-tool="text" title="Click to add new text OR click any existing text to edit it">
                         <i class="fas fa-font"></i>
-                        <span>Add Text</span>
+                        <span>Add/Edit Text</span>
                     </button>
-                    <button class="tool-btn" data-tool="find-replace">
-                        <i class="fas fa-search"></i>
-                        <span>Find & Replace</span>
+                    <button class="tool-btn" data-tool="edit-text" title="Click any text on the PDF to edit it">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit Text</span>
                     </button>
                 </div>
             </div>
@@ -1821,7 +1821,18 @@
 
             // Show instruction when text tool is active
             if (tool === 'text') {
+                showAlert('💡 Click anywhere to add new text, OR click existing text to edit it!', 'info', 5000);
+            }
+            
+            if (tool === 'edit-text') {
                 showAlert('💡 Click any text on the PDF to edit it!', 'info', 5000);
+                // edit-text is the same as text tool, just enables text layer
+                document.querySelectorAll('.text-layer-interactive').forEach(textLayer => {
+                    textLayer.classList.add('active');
+                });
+                document.querySelectorAll('.annotation-layer').forEach(layer => {
+                    layer.style.pointerEvents = 'none';
+                });
             }
 
             // Special handling for some tools
