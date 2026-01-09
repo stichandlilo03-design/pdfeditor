@@ -370,58 +370,48 @@
             50% { opacity: 0.7; }
         }
 
-        /* Text Layer - SIMPLE AND WORKING */
-        .text-layer-interactive {
-            position: absolute;
-            z-index: 50 !important;
-            pointer-events: none !important;
-            display: none;
-        }
-        
-        .text-layer-interactive.active {
-            pointer-events: auto !important;
-            display: block !important;
-        }
-
-        .pdf-text-item {
-            position: absolute;
-            white-space: pre;
-            cursor: text !important;
-            color: transparent;
-            outline: 2px solid transparent;
-            transition: outline 0.2s;
-            pointer-events: auto !important;
-            z-index: 50 !important;
-            user-select: none;
-        }
-
-        .pdf-text-item:hover {
-            outline: 2px solid #0282e5 !important;
-            background: rgba(2, 130, 229, 0.05);
-        }
-
-        .pdf-text-item.editing {
-            outline: 2px solid #0282e5 !important;
-        }
-
-        /* Text Layer */
-        .text-layer {
+        /* Text overlay for clickable text areas */
+        .text-overlay {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            overflow: hidden;
-            opacity: 0.2;
-            line-height: 1;
+            pointer-events: none;
+            z-index: 20;
         }
 
-        .text-layer > span {
-            color: transparent;
+        .text-click-area {
             position: absolute;
-            white-space: pre;
+            background: transparent;
             cursor: text;
-            transform-origin: 0% 0%;
+            transition: all 0.2s;
+            z-index: 21;
+        }
+
+        .text-click-area:hover {
+            background: rgba(0, 187, 136, 0.1);
+            border: 1px solid rgba(0, 187, 136, 0.5);
+        }
+
+        /* Text editor */
+        .text-editor-active {
+            position: absolute;
+            background: white;
+            border: 2px solid #0282e5;
+            border-radius: 4px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .text-editor-active textarea {
+            width: 100%;
+            min-height: 60px;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            font-family: Inter, sans-serif;
+            resize: vertical;
         }
 
         /* Annotation Layer */
@@ -437,7 +427,6 @@
         }
 
         .annotation-layer.tool-active {
-            /* Subtle indicator only on hover, not always visible */
             background: transparent;
         }
 
@@ -460,6 +449,7 @@
             box-shadow: var(--shadow-sm);
             display: flex;
             align-items: center;
+            z-index: 50;
         }
 
         .editable-text:hover {
@@ -474,18 +464,12 @@
             background: white;
         }
 
-        .editable-text textarea {
+        .editable-text span {
             width: 100%;
-            border: none;
-            outline: none;
-            resize: none;
-            font-family: inherit;
-            font-size: inherit;
-            color: inherit;
-            background: transparent;
-            padding: 0;
-            overflow: hidden;
-            line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 300px;
+            display: block;
         }
 
         .editable-image {
@@ -493,6 +477,7 @@
             border: 2px dashed transparent;
             cursor: move;
             transition: all 0.2s ease;
+            z-index: 50;
         }
 
         .editable-image:hover {
@@ -542,6 +527,7 @@
             justify-content: center;
             font-size: 12px;
             box-shadow: var(--shadow-sm);
+            z-index: 100;
         }
 
         .editable-text.selected .delete-btn,
@@ -859,6 +845,42 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Whiteout */
+        .whiteout-box {
+            position: absolute;
+            background: white;
+            border: 2px solid var(--border-color);
+            cursor: move;
+            z-index: 50;
+        }
+
+        .whiteout-box.selected {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.1);
+        }
+
+        /* Shape elements */
+        .shape-element {
+            position: absolute;
+            cursor: move;
+            border: 2px dashed transparent;
+            z-index: 50;
+        }
+
+        .shape-element:hover {
+            border-color: var(--warning-color);
+        }
+
+        .shape-element.selected {
+            border-color: var(--warning-color);
+            border-style: solid;
+        }
+
+        .shape-element svg {
+            width: 100%;
+            height: 100%;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .sidebar {
@@ -904,59 +926,6 @@
             .tool-grid {
                 grid-template-columns: 1fr;
             }
-        }
-
-        /* Whiteout */
-        .whiteout-box {
-            position: absolute;
-            background: white;
-            border: 2px solid var(--border-color);
-            cursor: move;
-        }
-
-        .whiteout-box.selected {
-            border-color: var(--danger-color);
-            box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.1);
-        }
-
-        /* Shape elements */
-        .shape-element {
-            position: absolute;
-            cursor: move;
-            border: 2px dashed transparent;
-        }
-
-        .shape-element:hover {
-            border-color: var(--warning-color);
-        }
-
-        .shape-element.selected {
-            border-color: var(--warning-color);
-            border-style: solid;
-        }
-
-        .shape-element svg {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Form fields */
-        .form-field {
-            position: absolute;
-            background: rgba(52, 152, 219, 0.1);
-            border: 2px solid var(--info-color);
-            cursor: pointer;
-        }
-
-        .form-field input,
-        .form-field textarea,
-        .form-field select {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: transparent;
-            padding: 4px 8px;
-            font-family: inherit;
         }
     </style>
 </head>
@@ -1288,29 +1257,18 @@
             elements: [],
             history: [],
             historyIndex: -1,
-            scale: 2.0, // Increased from 1.5 to 2.0 for better visibility
+            scale: 2.0,
             fileName: '',
-            signature: null
+            signature: null,
+            imageToAdd: null
         };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', init);
 
         function init() {
-            // Check if libraries are loaded
-            if (typeof pdfjsLib === 'undefined') {
-                showAlert('Error: PDF.js library failed to load. Please refresh the page.', 'error');
-                return;
-            }
-            
-            if (typeof PDFLib === 'undefined') {
-                showAlert('Error: PDF-lib library failed to load. Please refresh the page.', 'error');
-                return;
-            }
-
             setupEventListeners();
             setupSignatureCanvas();
-            
             console.log('ProPDF Editor initialized successfully');
         }
 
@@ -1337,13 +1295,10 @@
                 e.preventDefault();
                 uploadBox.style.borderColor = 'var(--primary-color)';
                 const file = e.dataTransfer.files[0];
-                if (file) {
-                    // Check by extension since MIME type can be unreliable
-                    if (file.name.toLowerCase().endsWith('.pdf')) {
-                        handleFileSelect({ target: { files: [file] } });
-                    } else {
-                        showAlert('Please drop a PDF file', 'error');
-                    }
+                if (file && file.name.toLowerCase().endsWith('.pdf')) {
+                    handleFileSelect({ target: { files: [file] } });
+                } else {
+                    showAlert('Please drop a PDF file', 'error');
                 }
             });
 
@@ -1402,9 +1357,7 @@
                 return;
             }
 
-            // Check file extension
-            const fileName = file.name.toLowerCase();
-            if (!fileName.endsWith('.pdf')) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
                 showAlert('Please select a PDF file', 'error');
                 return;
             }
@@ -1413,26 +1366,13 @@
             showLoading(true);
 
             try {
-                // Read file as array buffer
                 const arrayBuffer = await file.arrayBuffer();
-                
-                // Validate PDF header
-                const bytes = new Uint8Array(arrayBuffer);
-                const header = String.fromCharCode.apply(null, bytes.slice(0, 5));
-                
-                if (!header.startsWith('%PDF-')) {
-                    throw new Error('Invalid PDF file - no PDF header found. The file may be corrupted or not a valid PDF.');
-                }
-
-                state.pdfData = bytes;
+                state.pdfData = new Uint8Array(arrayBuffer);
 
                 // Load with PDF.js for rendering
                 const loadingTask = pdfjsLib.getDocument({ 
                     data: state.pdfData,
-                    verbosity: 0,
-                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-                    cMapPacked: true,
-                    standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/'
+                    verbosity: 0
                 });
                 
                 state.pdfDoc = await loadingTask.promise;
@@ -1440,18 +1380,13 @@
                 // Load with PDF-lib for editing
                 try {
                     state.pdfLibDoc = await PDFLib.PDFDocument.load(state.pdfData, {
-                        ignoreEncryption: true,
-                        updateMetadata: false
+                        ignoreEncryption: true
                     });
                 } catch (libError) {
                     console.warn('PDF-lib loading warning:', libError);
-                    // Continue anyway - we can still render with PDF.js
                 }
 
                 await renderAllPages();
-                
-                // Initialize history with empty state
-                addToHistory('PDF loaded');
                 
                 // Show editor
                 document.getElementById('uploadSection').style.display = 'none';
@@ -1461,23 +1396,12 @@
 
                 showAlert('PDF loaded successfully! ' + state.pdfDoc.numPages + ' pages', 'success');
                 
-                // Show helpful instructions after a moment
                 setTimeout(() => {
                     showAlert('💡 Click any text to edit it, or select a tool from sidebar to add new elements', 'info');
                 }, 2000);
             } catch (error) {
                 console.error('Error loading PDF:', error);
-                
-                let errorMessage = 'Failed to load PDF: ';
-                if (error.message) {
-                    errorMessage += error.message;
-                } else {
-                    errorMessage += 'Unknown error occurred. Please make sure the file is a valid PDF.';
-                }
-                
-                showAlert(errorMessage, 'error');
-                
-                // Reset file input
+                showAlert('Failed to load PDF: ' + error.message, 'error');
                 document.getElementById('fileInput').value = '';
             } finally {
                 showLoading(false);
@@ -1509,12 +1433,6 @@
                 badge.textContent = `Page ${pageNum}`;
                 wrapper.appendChild(badge);
 
-                // Add edit indicator
-                const editIndicator = document.createElement('div');
-                editIndicator.className = 'edit-indicator';
-                editIndicator.innerHTML = '<i class="fas fa-mouse-pointer"></i> Click to Edit';
-                wrapper.appendChild(editIndicator);
-
                 const canvas = document.createElement('canvas');
                 canvas.className = 'pdf-page-canvas';
                 canvas.width = viewport.width;
@@ -1534,78 +1452,77 @@
                     context.fillText('Error rendering page ' + pageNum, canvas.width / 2, canvas.height / 2);
                 }
 
-                // Extract text content and make it editable
+                wrapper.appendChild(canvas);
+
+                // Create text overlay for clickable text areas
+                const textOverlay = document.createElement('div');
+                textOverlay.className = 'text-overlay';
+                textOverlay.dataset.page = pageNum;
+                textOverlay.style.position = 'absolute';
+                textOverlay.style.top = '0';
+                textOverlay.style.left = '0';
+                textOverlay.style.width = viewport.width + 'px';
+                textOverlay.style.height = viewport.height + 'px';
+                textOverlay.style.pointerEvents = 'none';
+                textOverlay.style.zIndex = '20';
+                
+                // Extract text and create clickable areas
                 try {
                     const textContent = await page.getTextContent();
-                    const textLayer = document.createElement('div');
-                    textLayer.className = 'text-layer-interactive';
-                    textLayer.style.position = 'absolute';
-                    textLayer.style.left = '0';
-                    textLayer.style.top = '0';
-                    textLayer.style.width = viewport.width + 'px';
-                    textLayer.style.height = viewport.height + 'px';
-                    textLayer.style.zIndex = '50';
-                    textLayer.style.pointerEvents = 'auto';
-
-                    textContent.items.forEach((item) => {
-                        const textDiv = document.createElement('div');
-                        textDiv.className = 'pdf-text-item';
-                        
-                        // Calculate position
+                    
+                    textContent.items.forEach((item, index) => {
                         const transform = item.transform;
-                        const fontHeight = Math.sqrt(transform[2] * transform[2] + transform[3] * transform[3]);
                         const x = transform[4];
-                        const y = viewport.height - transform[5] - fontHeight;
+                        const y = viewport.height - transform[5];
+                        const width = item.width || 100;
+                        const height = Math.abs(transform[3]) || 20;
                         
-                        textDiv.style.position = 'absolute';
-                        textDiv.style.left = x + 'px';
-                        textDiv.style.top = y + 'px';
-                        textDiv.style.fontSize = fontHeight + 'px';
-                        textDiv.style.fontFamily = 'sans-serif';
-                        textDiv.style.whiteSpace = 'pre';
-                        textDiv.style.cursor = 'text';
-                        textDiv.style.padding = '2px';
-                        textDiv.style.color = 'transparent';
-                        textDiv.style.outline = '2px solid transparent';
-                        textDiv.style.transition = 'outline 0.2s';
-                        textDiv.style.pointerEvents = 'auto';
-                        textDiv.style.zIndex = '50';
+                        // Create a clickable area for this text
+                        const textArea = document.createElement('div');
+                        textArea.className = 'text-click-area';
+                        textArea.dataset.text = item.str;
+                        textArea.dataset.index = index;
+                        textArea.dataset.page = pageNum;
                         
-                        textDiv.textContent = item.str;
-                        textDiv.dataset.originalText = item.str;
-                        textDiv.dataset.x = x;
-                        textDiv.dataset.y = y;
-                        textDiv.dataset.fontSize = fontHeight;
+                        textArea.style.position = 'absolute';
+                        textArea.style.left = x + 'px';
+                        textArea.style.top = y + 'px';
+                        textArea.style.width = width + 'px';
+                        textArea.style.height = height + 'px';
+                        textArea.style.backgroundColor = 'transparent';
+                        textArea.style.cursor = 'text';
+                        textArea.style.border = '1px solid transparent';
+                        textArea.style.transition = 'border-color 0.2s';
                         
-                        // Hover effect
-                        textDiv.addEventListener('mouseenter', () => {
-                            textDiv.style.outline = '2px solid #0282e5';
-                        });
-                        
-                        textDiv.addEventListener('mouseleave', () => {
-                            if (!textDiv.classList.contains('editing')) {
-                                textDiv.style.outline = '2px solid transparent';
+                        // Add hover effect
+                        textArea.addEventListener('mouseenter', () => {
+                            if (state.currentTool === 'text' || state.currentTool === 'edit-text') {
+                                textArea.style.border = '1px solid #0282e5';
+                                textArea.style.backgroundColor = 'rgba(2, 130, 229, 0.1)';
                             }
                         });
                         
-                        // Click to edit - SUPER SIMPLE
-                        textDiv.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            console.log('TEXT CLICKED:', item.str);
-                            makeTextEditable(textDiv, pageNum);
+                        textArea.addEventListener('mouseleave', () => {
+                            textArea.style.border = '1px solid transparent';
+                            textArea.style.backgroundColor = 'transparent';
                         });
                         
-                        textLayer.appendChild(textDiv);
+                        // Click to edit text
+                        textArea.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (state.currentTool === 'text' || state.currentTool === 'edit-text') {
+                                editTextAtPosition(pageNum, x, y, item.str, item.transform);
+                            }
+                        });
+                        
+                        textOverlay.appendChild(textArea);
                     });
                     
-                    wrapper.appendChild(textLayer);
-                    console.log('Text layer created with', textContent.items.length, 'items');
+                    wrapper.appendChild(textOverlay);
+                    console.log('Created clickable text areas for page', pageNum);
                 } catch (textError) {
                     console.warn('Could not extract text:', textError);
                 }
-
-                wrapper.appendChild(canvas);
 
                 // Add annotation layer for NEW elements
                 const annotationLayer = document.createElement('div');
@@ -1616,130 +1533,153 @@
                 annotationLayer.style.position = 'absolute';
                 annotationLayer.style.top = '0';
                 annotationLayer.style.left = '0';
-                annotationLayer.style.zIndex = '1';
+                annotationLayer.style.zIndex = '10';
                 annotationLayer.style.pointerEvents = 'all';
                 
                 wrapper.appendChild(annotationLayer);
 
-                // Click handler for adding NEW elements (when tool is selected)
+                // Click handler for adding NEW elements
                 annotationLayer.addEventListener('click', (e) => {
-                    // Only handle if a tool is selected and clicking directly on layer
                     if (state.currentTool && e.target === annotationLayer) {
-                        console.log('Annotation layer clicked for page', pageNum);
                         handleCanvasClick(e, pageNum);
                     }
                 });
 
                 container.appendChild(wrapper);
                 
-                console.log('Page', pageNum, 'rendered with text layer and annotation layer');
             } catch (error) {
                 console.error('Error setting up page ' + pageNum + ':', error);
                 showAlert('Error loading page ' + pageNum + ': ' + error.message, 'warning');
             }
         }
 
-        // SIMPLE text editing that actually works
-        function makeTextEditable(textDiv, pageNum) {
-            console.log('Making text editable');
+        // Edit text at position
+        function editTextAtPosition(pageNum, x, y, originalText, transform) {
+            console.log('Editing text at:', x, y, originalText);
             
-            textDiv.classList.add('editing');
-            textDiv.style.outline = '2px solid #0282e5';
+            // Remove any existing text editor
+            const existingEditor = document.querySelector('.text-editor-active');
+            if (existingEditor) {
+                existingEditor.remove();
+            }
             
-            const originalText = textDiv.dataset.originalText;
-            const x = parseFloat(textDiv.dataset.x);
-            const y = parseFloat(textDiv.dataset.y);
-            const fontSize = parseFloat(textDiv.dataset.fontSize);
+            const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${pageNum}"]`);
+            const annotationLayer = wrapper.querySelector('.annotation-layer');
             
-            // Create simple input
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = originalText;
-            input.style.position = 'absolute';
-            input.style.left = x + 'px';
-            input.style.top = y + 'px';
-            input.style.fontSize = fontSize + 'px';
-            input.style.zIndex = '500';
-            input.style.border = '2px solid #0282e5';
-            input.style.padding = '2px 4px';
-            input.style.background = 'white';
-            input.style.minWidth = '100px';
+            // Create editor
+            const editorDiv = document.createElement('div');
+            editorDiv.className = 'text-editor-active';
+            editorDiv.style.position = 'absolute';
+            editorDiv.style.left = x + 'px';
+            editorDiv.style.top = y + 'px';
+            editorDiv.style.zIndex = '1000';
+            editorDiv.style.backgroundColor = 'white';
+            editorDiv.style.border = '2px solid #0282e5';
+            editorDiv.style.borderRadius = '4px';
+            editorDiv.style.padding = '8px';
+            editorDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            editorDiv.style.minWidth = '200px';
             
-            const layer = textDiv.parentElement.parentElement.querySelector('.annotation-layer');
-            layer.appendChild(input);
+            const textInput = document.createElement('textarea');
+            textInput.value = originalText;
+            textInput.style.width = '100%';
+            textInput.style.minHeight = '60px';
+            textInput.style.border = 'none';
+            textInput.style.outline = 'none';
+            textInput.style.fontSize = '14px';
+            textInput.style.fontFamily = 'Inter, sans-serif';
+            textInput.style.resize = 'vertical';
             
-            input.focus();
-            input.select();
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.justifyContent = 'flex-end';
+            buttonContainer.style.gap = '8px';
+            buttonContainer.style.marginTop = '10px';
             
-            // Save on Enter
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const newText = input.value;
-                    if (newText && newText !== originalText) {
-                        textDiv.style.display = 'none';
-                        addTextAtPosition(pageNum, x, y, newText, fontSize);
-                        showAlert('✓ Text updated!', 'success');
-                    }
-                    input.remove();
-                    textDiv.classList.remove('editing');
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Save';
+            saveBtn.style.padding = '6px 16px';
+            saveBtn.style.backgroundColor = '#00BB88';
+            saveBtn.style.color = 'white';
+            saveBtn.style.border = 'none';
+            saveBtn.style.borderRadius = '4px';
+            saveBtn.style.cursor = 'pointer';
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.style.padding = '6px 16px';
+            cancelBtn.style.backgroundColor = '#e74c3c';
+            cancelBtn.style.color = 'white';
+            cancelBtn.style.border = 'none';
+            cancelBtn.style.borderRadius = '4px';
+            cancelBtn.style.cursor = 'pointer';
+            
+            saveBtn.addEventListener('click', () => {
+                const newText = textInput.value;
+                if (newText && newText !== originalText) {
+                    createNewTextElement(pageNum, x, y, newText);
+                    showAlert('Text updated successfully!', 'success');
+                }
+                editorDiv.remove();
+            });
+            
+            cancelBtn.addEventListener('click', () => {
+                editorDiv.remove();
+            });
+            
+            // Keyboard shortcuts
+            textInput.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    saveBtn.click();
                 } else if (e.key === 'Escape') {
-                    input.remove();
-                    textDiv.classList.remove('editing');
-                    textDiv.style.outline = '2px solid transparent';
+                    cancelBtn.click();
                 }
             });
             
-            // Save on blur
-            input.addEventListener('blur', () => {
-                setTimeout(() => {
-                    const newText = input.value;
-                    if (newText && newText !== originalText) {
-                        textDiv.style.display = 'none';
-                        addTextAtPosition(pageNum, x, y, newText, fontSize);
-                        showAlert('✓ Text updated!', 'success');
-                    }
-                    input.remove();
-                    textDiv.classList.remove('editing');
-                    textDiv.style.outline = '2px solid transparent';
-                }, 100);
-            });
+            buttonContainer.appendChild(cancelBtn);
+            buttonContainer.appendChild(saveBtn);
+            
+            editorDiv.appendChild(textInput);
+            editorDiv.appendChild(buttonContainer);
+            annotationLayer.appendChild(editorDiv);
+            
+            // Focus and select all text
+            setTimeout(() => {
+                textInput.focus();
+                textInput.select();
+            }, 50);
         }
 
-        // Edit existing PDF text - SIMPLIFIED VERSION LIKE SEJDA
-        function editExistingText(textDiv, pageNum) {
-            makeTextEditable(textDiv, pageNum);
-        }
-
-        // Helper function to add text at specific position
-        function addTextAtPosition(pageNum, x, y, text, fontSize) {
-            const layer = document.querySelector(`.annotation-layer[data-page="${pageNum}"]`);
+        // Create new text element
+        function createNewTextElement(pageNum, x, y, text) {
+            const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${pageNum}"]`);
+            const annotationLayer = wrapper.querySelector('.annotation-layer');
             
             const textElement = document.createElement('div');
             textElement.className = 'editable-text';
             textElement.style.left = x + 'px';
             textElement.style.top = y + 'px';
-            textElement.style.fontSize = fontSize + 'px';
-            textElement.style.fontFamily = 'Helvetica';
+            textElement.style.fontSize = '16px';
+            textElement.style.fontFamily = 'Helvetica, sans-serif';
             textElement.style.color = '#000000';
             textElement.style.position = 'absolute';
-            textElement.style.width = 'auto';
+            textElement.style.backgroundColor = 'white';
+            textElement.style.padding = '4px 8px';
+            textElement.style.borderRadius = '4px';
+            textElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            textElement.style.zIndex = '50';
             textElement.style.minWidth = '100px';
-
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.rows = 1;
-            textarea.addEventListener('input', () => {
-                textElement.dataset.content = textarea.value;
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.max(textarea.scrollHeight, 30) + 'px';
-            });
-
-            textarea.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-            });
-
-            textElement.appendChild(textarea);
-
+            
+            const textSpan = document.createElement('span');
+            textSpan.textContent = text;
+            textSpan.style.whiteSpace = 'pre-wrap';
+            textSpan.style.wordWrap = 'break-word';
+            textSpan.style.maxWidth = '300px';
+            textSpan.style.display = 'block';
+            
+            textElement.appendChild(textSpan);
+            
+            // Add delete button
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
@@ -1747,26 +1687,58 @@
                 e.stopPropagation();
                 textElement.remove();
                 state.elements = state.elements.filter(el => el.element !== textElement);
+                showAlert('Text deleted', 'success');
             });
             textElement.appendChild(deleteBtn);
-
-            addResizeHandles(textElement);
-            makeDraggable(textElement);
             
+            // Make editable on click
             textElement.addEventListener('click', (e) => {
                 e.stopPropagation();
+                
+                // Make content editable
+                textElement.contentEditable = true;
+                textElement.style.border = '2px solid #0282e5';
+                textElement.style.padding = '6px 10px';
+                textElement.focus();
+                
+                // Select all text
+                const range = document.createRange();
+                range.selectNodeContents(textElement);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // Save on blur
+                const saveOnBlur = () => {
+                    textElement.contentEditable = false;
+                    textElement.style.border = 'none';
+                    textElement.style.padding = '4px 8px';
+                    textElement.removeEventListener('blur', saveOnBlur);
+                };
+                
+                textElement.addEventListener('blur', saveOnBlur);
+                
                 selectElement(textElement);
             });
-
-            layer.appendChild(textElement);
-
+            
+            // Add resize handles
+            addResizeHandles(textElement);
+            
+            // Make draggable
+            makeDraggable(textElement);
+            
+            annotationLayer.appendChild(textElement);
+            
+            // Store in state
             state.elements.push({
                 type: 'text',
                 element: textElement,
-                page: pageNum
+                page: pageNum,
+                content: text
             });
-
-            addToHistory('Edited text');
+            
+            addToHistory('Added text');
+            return textElement;
         }
 
         // Tool Activation
@@ -1784,7 +1756,7 @@
 
             state.currentTool = tool;
 
-            // Add visual feedback to pages and annotation layers
+            // Show tool-active state
             document.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
                 if (tool) {
                     wrapper.classList.add('tool-active');
@@ -1793,65 +1765,33 @@
                 }
             });
 
-            document.querySelectorAll('.annotation-layer').forEach(layer => {
-                if (tool) {
-                    layer.classList.add('tool-active');
-                    
-                    // CRITICAL: Make annotation layer transparent when text tool is active
-                    if (tool === 'text') {
-                        layer.style.pointerEvents = 'none';
-                        layer.style.background = 'transparent';
-                    } else {
-                        layer.style.pointerEvents = 'all';
-                    }
+            // Enable text selection when text tools are active
+            document.querySelectorAll('.text-overlay').forEach(overlay => {
+                if (tool === 'text' || tool === 'edit-text') {
+                    overlay.style.pointerEvents = 'auto';
+                    overlay.style.cursor = 'text';
                 } else {
-                    layer.classList.remove('tool-active');
-                    layer.style.pointerEvents = 'all';
-                }
-            });
-            
-            // Enable/disable text layer clicks based on tool
-            document.querySelectorAll('.text-layer-interactive').forEach(textLayer => {
-                if (tool === 'text') {
-                    textLayer.classList.add('active');
-                } else {
-                    textLayer.classList.remove('active');
+                    overlay.style.pointerEvents = 'none';
+                    overlay.style.cursor = 'default';
                 }
             });
 
-            // Show instruction when text tool is active
+            // Show instructions
             if (tool === 'text') {
-                showAlert('💡 Click anywhere to add new text, OR click existing text to edit it!', 'info', 5000);
-            }
-            
-            if (tool === 'edit-text') {
+                showAlert('💡 Click anywhere to add new text, OR click existing PDF text to edit it!', 'info', 5000);
+            } else if (tool === 'edit-text') {
                 showAlert('💡 Click any text on the PDF to edit it!', 'info', 5000);
-                // edit-text is the same as text tool, just enables text layer
-                document.querySelectorAll('.text-layer-interactive').forEach(textLayer => {
-                    textLayer.classList.add('active');
-                });
-                document.querySelectorAll('.annotation-layer').forEach(layer => {
-                    layer.style.pointerEvents = 'none';
-                });
-            }
-
-            // Special handling for some tools
-            if (tool === 'signature') {
+            } else if (tool === 'signature') {
                 openSignatureModal();
                 return;
             } else if (tool === 'image') {
                 selectImage();
                 return;
-            } else if (tool === 'find-replace') {
-                showAlert('Find & Replace: Click text to edit it directly!', 'info');
             } else if (tool === 'delete-page') {
                 showAlert('Click on a page to delete it', 'info');
             } else if (tool === 'rotate-page') {
                 showAlert('Click on a page to rotate it', 'info');
             }
-
-            // Show instruction for active tool
-            showToolInstruction(tool);
 
             // Update cursor
             document.querySelectorAll('.annotation-layer').forEach(layer => {
@@ -1859,27 +1799,10 @@
             });
         }
 
-        function showToolInstruction(tool) {
-            const instructions = {
-                text: 'Click anywhere on the PDF to add text',
-                image: 'Select an image, then click on the PDF to place it',
-                signature: 'Create your signature, then click on the PDF to place it',
-                rectangle: 'Click and drag to draw a rectangle',
-                circle: 'Click and drag to draw a circle',
-                line: 'Click and drag to draw a line',
-                arrow: 'Click and drag to draw an arrow',
-                highlight: 'Select text to highlight it',
-                whiteout: 'Click and drag to cover content with white box'
-            };
-
-            if (instructions[tool]) {
-                showAlert(instructions[tool], 'info');
-            }
-        }
-
         function getCursorForTool(tool) {
             const cursors = {
                 text: 'text',
+                'edit-text': 'text',
                 image: 'copy',
                 signature: 'copy',
                 rectangle: 'crosshair',
@@ -1892,15 +1815,8 @@
             return cursors[tool] || 'default';
         }
 
-        // Canvas Click Handler
+        // Canvas Click Handler - For adding NEW elements
         function handleCanvasClick(e, pageNum) {
-            console.log('Canvas clicked!', {
-                pageNum: pageNum,
-                currentTool: state.currentTool,
-                targetElement: e.target,
-                targetClass: e.target.className
-            });
-
             if (!state.currentTool) {
                 showAlert('⚠️ Please select a tool from the sidebar first!', 'warning');
                 return;
@@ -1910,16 +1826,12 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            console.log('Click position:', { x, y });
-
             switch (state.currentTool) {
                 case 'text':
-                    console.log('Adding text at', x, y);
-                    addText(pageNum, x, y);
+                    createNewTextElement(pageNum, x, y, 'New Text');
                     break;
                 case 'signature':
                     if (state.signature) {
-                        console.log('Adding signature at', x, y);
                         addSignature(pageNum, x, y);
                     } else {
                         showAlert('Please create a signature first', 'warning');
@@ -1927,31 +1839,24 @@
                     }
                     break;
                 case 'rectangle':
-                    console.log('Starting rectangle draw');
-                    startDrawingShape(e, pageNum, 'rectangle');
+                    addShape(pageNum, x, y, 'rectangle');
                     break;
                 case 'circle':
-                    console.log('Starting circle draw');
-                    startDrawingShape(e, pageNum, 'circle');
+                    addShape(pageNum, x, y, 'circle');
                     break;
                 case 'line':
-                    console.log('Starting line draw');
-                    startDrawingShape(e, pageNum, 'line');
+                    addShape(pageNum, x, y, 'line');
                     break;
                 case 'arrow':
-                    console.log('Starting arrow draw');
-                    startDrawingShape(e, pageNum, 'arrow');
+                    addShape(pageNum, x, y, 'arrow');
                     break;
                 case 'whiteout':
-                    console.log('Starting whiteout draw');
-                    startDrawingWhiteout(e, pageNum);
+                    addWhiteout(pageNum, x, y);
                     break;
                 case 'delete-page':
-                    console.log('Deleting page', pageNum);
                     deletePage(pageNum);
                     break;
                 case 'rotate-page':
-                    console.log('Rotating page', pageNum);
                     rotatePage(pageNum);
                     break;
                 default:
@@ -1959,114 +1864,290 @@
             }
         }
 
-        // Start drawing shape with drag
-        function startDrawingShape(e, pageNum, shapeType) {
-            const layer = e.currentTarget;
-            const rect = layer.getBoundingClientRect();
-            const startX = e.clientX - rect.left;
-            const startY = e.clientY - rect.top;
+        // Add Image
+        function selectImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        state.imageToAdd = event.target.result;
+                        showAlert('Now click on the PDF to place the image', 'success');
+                        // Re-activate image tool
+                        state.currentTool = 'image';
+                        document.querySelector(`[data-tool="image"]`).classList.add('active');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            input.click();
+        }
 
+        function addImage(pageNum, x, y, imageSrc) {
+            const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${pageNum}"]`);
+            const annotationLayer = wrapper.querySelector('.annotation-layer');
+            
+            const imageElement = document.createElement('div');
+            imageElement.className = 'editable-image';
+            imageElement.style.left = x + 'px';
+            imageElement.style.top = y + 'px';
+            imageElement.style.width = '200px';
+            imageElement.style.height = '200px';
+            imageElement.style.position = 'absolute';
+            imageElement.style.zIndex = '50';
+
+            const img = document.createElement('img');
+            img.src = imageSrc;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            imageElement.appendChild(img);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                imageElement.remove();
+                state.elements = state.elements.filter(el => el.element !== imageElement);
+                showAlert('Image deleted', 'success');
+            });
+            imageElement.appendChild(deleteBtn);
+
+            addResizeHandles(imageElement);
+            makeDraggable(imageElement);
+            imageElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectElement(imageElement);
+            });
+
+            annotationLayer.appendChild(imageElement);
+
+            state.elements.push({
+                type: 'image',
+                element: imageElement,
+                page: pageNum,
+                src: imageSrc
+            });
+
+            state.imageToAdd = null;
+            addToHistory('Added image');
+            showAlert('Image added! Drag to move, drag corners to resize', 'success');
+        }
+
+        // Make Element Draggable
+        function makeDraggable(element) {
+            let isDragging = false;
+            let startX, startY, initialX, initialY;
+
+            element.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('delete-btn') || 
+                    e.target.classList.contains('resize-handle') ||
+                    element.contentEditable === 'true') {
+                    return;
+                }
+
+                e.preventDefault();
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialX = element.offsetLeft;
+                initialY = element.offsetTop;
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            function onMouseMove(e) {
+                if (!isDragging) return;
+                
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                element.style.left = (initialX + dx) + 'px';
+                element.style.top = (initialY + dy) + 'px';
+            }
+
+            function onMouseUp() {
+                isDragging = false;
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                
+                if (Math.abs(parseInt(element.style.left) - initialX) > 5 || 
+                    Math.abs(parseInt(element.style.top) - initialY) > 5) {
+                    addToHistory('Moved element');
+                }
+            }
+        }
+
+        // Add Resize Handles
+        function addResizeHandles(element) {
+            const positions = ['nw', 'ne', 'sw', 'se'];
+            positions.forEach(pos => {
+                const handle = document.createElement('div');
+                handle.className = `resize-handle ${pos}`;
+                handle.addEventListener('mousedown', (e) => startResize(e, element, pos));
+                element.appendChild(handle);
+            });
+        }
+
+        function startResize(e, element, position) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = element.offsetWidth;
+            const startHeight = element.offsetHeight;
+            const startLeft = element.offsetLeft;
+            const startTop = element.offsetTop;
+
+            document.body.style.userSelect = 'none';
+
+            function resize(e) {
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+
+                if (position.includes('e')) {
+                    const newWidth = Math.max(50, startWidth + dx);
+                    element.style.width = newWidth + 'px';
+                }
+                if (position.includes('w')) {
+                    const newWidth = Math.max(50, startWidth - dx);
+                    element.style.width = newWidth + 'px';
+                    element.style.left = (startLeft + dx) + 'px';
+                }
+                if (position.includes('s')) {
+                    const newHeight = Math.max(30, startHeight + dy);
+                    element.style.height = newHeight + 'px';
+                }
+                if (position.includes('n')) {
+                    const newHeight = Math.max(30, startHeight - dy);
+                    element.style.height = newHeight + 'px';
+                    element.style.top = (startTop + dy) + 'px';
+                }
+            }
+
+            function stopResize() {
+                document.removeEventListener('mousemove', resize);
+                document.removeEventListener('mouseup', stopResize);
+                document.body.style.userSelect = '';
+                addToHistory('Resized element');
+            }
+
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResize);
+        }
+
+        // Select Element
+        function selectElement(element) {
+            // Deselect previous
+            document.querySelectorAll('.editable-text, .editable-image, .whiteout-box, .shape-element').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Select new
+            element.classList.add('selected');
+            state.selectedElement = element;
+
+            // Show properties
+            showProperties(element);
+        }
+
+        function showProperties(element) {
+            document.getElementById('textProperties').style.display = 'none';
+            document.getElementById('imageProperties').style.display = 'none';
+
+            if (element.classList.contains('editable-text')) {
+                document.getElementById('textProperties').style.display = 'block';
+                const textSpan = element.querySelector('span');
+                document.getElementById('textContentInput').value = textSpan ? textSpan.textContent : '';
+                document.getElementById('fontSizeInput').value = parseInt(element.style.fontSize) || 16;
+                document.getElementById('textColorInput').value = rgbToHex(element.style.color) || '#000000';
+                updateColorPreview();
+            } else if (element.classList.contains('editable-image')) {
+                document.getElementById('imageProperties').style.display = 'block';
+                document.getElementById('imageWidthInput').value = element.offsetWidth;
+                document.getElementById('imageHeightInput').value = element.offsetHeight;
+            }
+
+            document.getElementById('propertiesPanel').classList.add('active');
+        }
+
+        // Properties Updates
+        function updateTextContent(e) {
+            if (!state.selectedElement || !state.selectedElement.classList.contains('editable-text')) return;
+            const textSpan = state.selectedElement.querySelector('span');
+            if (textSpan) {
+                textSpan.textContent = e.target.value;
+                state.selectedElement.dataset.content = e.target.value;
+            }
+        }
+
+        function updateFontSize(e) {
+            if (!state.selectedElement || !state.selectedElement.classList.contains('editable-text')) return;
+            state.selectedElement.style.fontSize = e.target.value + 'px';
+        }
+
+        function updateFontFamily(e) {
+            if (!state.selectedElement || !state.selectedElement.classList.contains('editable-text')) return;
+            state.selectedElement.style.fontFamily = e.target.value;
+        }
+
+        function updateTextColor(e) {
+            if (!state.selectedElement || !state.selectedElement.classList.contains('editable-text')) return;
+            state.selectedElement.style.color = e.target.value;
+            updateColorPreview();
+        }
+
+        function updateColorPreview() {
+            const color = document.getElementById('textColorInput').value;
+            document.getElementById('textColorPreview').style.background = color;
+            document.getElementById('textColorValue').textContent = color;
+        }
+
+        // Add Shape
+        function addShape(pageNum, x, y, type) {
+            const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${pageNum}"]`);
+            const annotationLayer = wrapper.querySelector('.annotation-layer');
+            
             const shapeElement = document.createElement('div');
             shapeElement.className = 'shape-element';
-            shapeElement.style.left = startX + 'px';
-            shapeElement.style.top = startY + 'px';
-            shapeElement.style.width = '0px';
-            shapeElement.style.height = '0px';
+            shapeElement.style.left = x + 'px';
+            shapeElement.style.top = y + 'px';
+            shapeElement.style.width = '100px';
+            shapeElement.style.height = '100px';
             shapeElement.style.position = 'absolute';
+            shapeElement.style.zIndex = '50';
 
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('width', '100%');
             svg.setAttribute('height', '100%');
-            svg.style.overflow = 'visible';
 
-            let shapeEl;
-            if (shapeType === 'rectangle') {
-                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                shapeEl.setAttribute('width', '100%');
-                shapeEl.setAttribute('height', '100%');
-                shapeEl.setAttribute('fill', 'none');
-                shapeEl.setAttribute('stroke', '#e74c3c');
-                shapeEl.setAttribute('stroke-width', '3');
-            } else if (shapeType === 'circle') {
-                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-                shapeEl.setAttribute('cx', '50%');
-                shapeEl.setAttribute('cy', '50%');
-                shapeEl.setAttribute('rx', '50%');
-                shapeEl.setAttribute('ry', '50%');
-                shapeEl.setAttribute('fill', 'none');
-                shapeEl.setAttribute('stroke', '#3498db');
-                shapeEl.setAttribute('stroke-width', '3');
-            } else if (shapeType === 'line') {
-                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                shapeEl.setAttribute('x1', '0');
-                shapeEl.setAttribute('y1', '0');
-                shapeEl.setAttribute('x2', '100%');
-                shapeEl.setAttribute('y2', '100%');
-                shapeEl.setAttribute('stroke', '#2c3e50');
-                shapeEl.setAttribute('stroke-width', '3');
-            } else if (shapeType === 'arrow') {
-                shapeEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                shapeEl.setAttribute('x1', '0');
-                shapeEl.setAttribute('y1', '50%');
-                shapeEl.setAttribute('x2', '100%');
-                shapeEl.setAttribute('y2', '50%');
-                shapeEl.setAttribute('stroke', '#f39c12');
-                shapeEl.setAttribute('stroke-width', '3');
-                shapeEl.setAttribute('marker-end', 'url(#arrowhead)');
-                
-                // Add arrowhead marker
-                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-                marker.setAttribute('id', 'arrowhead');
-                marker.setAttribute('markerWidth', '10');
-                marker.setAttribute('markerHeight', '10');
-                marker.setAttribute('refX', '9');
-                marker.setAttribute('refY', '3');
-                marker.setAttribute('orient', 'auto');
-                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                polygon.setAttribute('points', '0 0, 10 3, 0 6');
-                polygon.setAttribute('fill', '#f39c12');
-                marker.appendChild(polygon);
-                defs.appendChild(marker);
-                svg.appendChild(defs);
+            if (type === 'rectangle') {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('width', '100%');
+                rect.setAttribute('height', '100%');
+                rect.setAttribute('fill', 'none');
+                rect.setAttribute('stroke', '#e74c3c');
+                rect.setAttribute('stroke-width', '2');
+                svg.appendChild(rect);
+            } else if (type === 'circle') {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '50%');
+                circle.setAttribute('cy', '50%');
+                circle.setAttribute('r', '45%');
+                circle.setAttribute('fill', 'none');
+                circle.setAttribute('stroke', '#3498db');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
             }
 
-            svg.appendChild(shapeEl);
             shapeElement.appendChild(svg);
-            layer.appendChild(shapeElement);
 
-            function onMouseMove(moveEvent) {
-                const currentX = moveEvent.clientX - rect.left;
-                const currentY = moveEvent.clientY - rect.top;
-                
-                const width = Math.abs(currentX - startX);
-                const height = Math.abs(currentY - startY);
-                const left = Math.min(startX, currentX);
-                const top = Math.min(startY, currentY);
-
-                shapeElement.style.left = left + 'px';
-                shapeElement.style.top = top + 'px';
-                shapeElement.style.width = width + 'px';
-                shapeElement.style.height = height + 'px';
-            }
-
-            function onMouseUp() {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-
-                // Only keep if size is reasonable
-                if (parseInt(shapeElement.style.width) > 10 && parseInt(shapeElement.style.height) > 10) {
-                    finishShape(shapeElement, pageNum, shapeType);
-                } else {
-                    shapeElement.remove();
-                }
-            }
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        }
-
-        function finishShape(shapeElement, pageNum, shapeType) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
@@ -2084,64 +2165,35 @@
                 selectElement(shapeElement);
             });
 
+            annotationLayer.appendChild(shapeElement);
+
             state.elements.push({
                 type: 'shape',
                 element: shapeElement,
                 page: pageNum,
-                shapeType: shapeType
+                shapeType: type
             });
 
-            addToHistory('Added ' + shapeType);
+            addToHistory('Added ' + type);
+            showAlert(type + ' added! Drag to move, drag corners to resize', 'success');
         }
 
-        // Start drawing whiteout with drag
-        function startDrawingWhiteout(e, pageNum) {
-            const layer = e.currentTarget;
-            const rect = layer.getBoundingClientRect();
-            const startX = e.clientX - rect.left;
-            const startY = e.clientY - rect.top;
-
+        // Add Whiteout
+        function addWhiteout(pageNum, x, y) {
+            const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${pageNum}"]`);
+            const annotationLayer = wrapper.querySelector('.annotation-layer');
+            
             const whiteout = document.createElement('div');
             whiteout.className = 'whiteout-box';
-            whiteout.style.left = startX + 'px';
-            whiteout.style.top = startY + 'px';
-            whiteout.style.width = '0px';
-            whiteout.style.height = '0px';
+            whiteout.style.left = x + 'px';
+            whiteout.style.top = y + 'px';
+            whiteout.style.width = '100px';
+            whiteout.style.height = '50px';
+            whiteout.style.backgroundColor = 'white';
+            whiteout.style.border = '2px solid #e74c3c';
             whiteout.style.position = 'absolute';
+            whiteout.style.zIndex = '50';
 
-            layer.appendChild(whiteout);
-
-            function onMouseMove(moveEvent) {
-                const currentX = moveEvent.clientX - rect.left;
-                const currentY = moveEvent.clientY - rect.top;
-                
-                const width = Math.abs(currentX - startX);
-                const height = Math.abs(currentY - startY);
-                const left = Math.min(startX, currentX);
-                const top = Math.min(startY, currentY);
-
-                whiteout.style.left = left + 'px';
-                whiteout.style.top = top + 'px';
-                whiteout.style.width = width + 'px';
-                whiteout.style.height = height + 'px';
-            }
-
-            function onMouseUp() {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-
-                if (parseInt(whiteout.style.width) > 10 && parseInt(whiteout.style.height) > 10) {
-                    finishWhiteout(whiteout, pageNum);
-                } else {
-                    whiteout.remove();
-                }
-            }
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        }
-
-        function finishWhiteout(whiteout, pageNum) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
@@ -2159,6 +2211,8 @@
                 selectElement(whiteout);
             });
 
+            annotationLayer.appendChild(whiteout);
+
             state.elements.push({
                 type: 'whiteout',
                 element: whiteout,
@@ -2166,6 +2220,7 @@
             });
 
             addToHistory('Added whiteout');
+            showAlert('Whiteout added! Drag to move, drag corners to resize', 'success');
         }
 
         // Page management
@@ -2180,8 +2235,6 @@
                 if (wrapper) {
                     wrapper.remove();
                     showAlert(`Page ${pageNum} deleted`, 'success');
-                    
-                    // Remove elements from this page
                     state.elements = state.elements.filter(el => el.page !== pageNum);
                 }
             }
@@ -2195,152 +2248,13 @@
                 wrapper.dataset.rotation = newRotation;
                 
                 const canvas = wrapper.querySelector('canvas');
-                const annotationLayer = wrapper.querySelector('.annotation-layer');
-                
                 canvas.style.transform = `rotate(${newRotation}deg)`;
-                annotationLayer.style.transform = `rotate(${newRotation}deg)`;
                 
                 showAlert(`Page ${pageNum} rotated`, 'success');
             }
         }
 
-        // Add Text
-        function addText(pageNum, x, y) {
-            const layer = document.querySelector(`.annotation-layer[data-page="${pageNum}"]`);
-            
-            const textElement = document.createElement('div');
-            textElement.className = 'editable-text';
-            textElement.style.left = x + 'px';
-            textElement.style.top = y + 'px';
-            textElement.style.fontSize = '16px';
-            textElement.style.fontFamily = 'Helvetica';
-            textElement.style.color = '#000000';
-            textElement.style.position = 'absolute';
-            textElement.style.width = '200px';
-
-            const textarea = document.createElement('textarea');
-            textarea.placeholder = 'Type text here...';
-            textarea.rows = 1;
-            textarea.addEventListener('input', () => {
-                textElement.dataset.content = textarea.value;
-                // Auto-resize textarea height
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.max(textarea.scrollHeight, 30) + 'px';
-            });
-
-            // Prevent dragging when typing
-            textarea.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-            });
-
-            textElement.appendChild(textarea);
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                textElement.remove();
-                state.elements = state.elements.filter(el => el.element !== textElement);
-                showAlert('Text element deleted', 'info');
-                addToHistory('Deleted text');
-            });
-            textElement.appendChild(deleteBtn);
-
-            // Add resize handles for text elements
-            addResizeHandles(textElement);
-            makeDraggable(textElement);
-            
-            textElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-                selectElement(textElement);
-            });
-
-            layer.appendChild(textElement);
-            
-            // Focus and position cursor at end
-            setTimeout(() => {
-                textarea.focus();
-            }, 50);
-
-            state.elements.push({
-                type: 'text',
-                element: textElement,
-                page: pageNum
-            });
-
-            addToHistory('Added text');
-            showAlert('Text added! Drag corners to resize', 'success');
-        }
-
-        // Add Image
-        function selectImage() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        state.imageToAdd = event.target.result;
-                        showAlert('Now click on the PDF to place the image', 'success');
-                        // Keep the image tool active
-                        state.currentTool = 'image';
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-            input.click();
-        }
-
-        function addImage(pageNum, x, y, imageSrc) {
-            const layer = document.querySelector(`.annotation-layer[data-page="${pageNum}"]`);
-            
-            const imageElement = document.createElement('div');
-            imageElement.className = 'editable-image';
-            imageElement.style.left = x + 'px';
-            imageElement.style.top = y + 'px';
-            imageElement.style.width = '200px';
-            imageElement.style.height = '200px';
-            imageElement.style.position = 'absolute';
-
-            const img = document.createElement('img');
-            img.src = imageSrc;
-            imageElement.appendChild(img);
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                imageElement.remove();
-                state.elements = state.elements.filter(el => el.element !== imageElement);
-            });
-            imageElement.appendChild(deleteBtn);
-
-            addResizeHandles(imageElement);
-            makeDraggable(imageElement);
-            imageElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-                selectElement(imageElement);
-            });
-
-            layer.appendChild(imageElement);
-
-            state.elements.push({
-                type: 'image',
-                element: imageElement,
-                page: pageNum,
-                src: imageSrc
-            });
-
-            state.imageToAdd = null;
-            addToHistory('Added image');
-            showAlert('Image added! You can resize and move it', 'success');
-        }
-
-        // Signature
+        // Signature functions
         function setupSignatureCanvas() {
             const canvas = document.getElementById('signatureCanvas');
             const ctx = canvas.getContext('2d');
@@ -2417,7 +2331,6 @@
                     showAlert('Please type your signature', 'warning');
                     return;
                 }
-                // Create signature from text
                 const canvas = document.createElement('canvas');
                 canvas.width = 400;
                 canvas.height = 100;
@@ -2454,284 +2367,6 @@
             addImage(pageNum, x, y, state.signature);
         }
 
-        // Add Shape
-        function addShape(pageNum, x, y, type) {
-            const layer = document.querySelector(`.annotation-layer[data-page="${pageNum}"]`);
-            
-            const shapeElement = document.createElement('div');
-            shapeElement.className = 'shape-element';
-            shapeElement.style.left = x + 'px';
-            shapeElement.style.top = y + 'px';
-            shapeElement.style.width = '100px';
-            shapeElement.style.height = '100px';
-
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('width', '100%');
-            svg.setAttribute('height', '100%');
-
-            if (type === 'rectangle') {
-                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                rect.setAttribute('width', '100%');
-                rect.setAttribute('height', '100%');
-                rect.setAttribute('fill', 'none');
-                rect.setAttribute('stroke', '#e74c3c');
-                rect.setAttribute('stroke-width', '2');
-                svg.appendChild(rect);
-            } else if (type === 'circle') {
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', '50%');
-                circle.setAttribute('cy', '50%');
-                circle.setAttribute('r', '45%');
-                circle.setAttribute('fill', 'none');
-                circle.setAttribute('stroke', '#3498db');
-                circle.setAttribute('stroke-width', '2');
-                svg.appendChild(circle);
-            }
-
-            shapeElement.appendChild(svg);
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                shapeElement.remove();
-            });
-            shapeElement.appendChild(deleteBtn);
-
-            addResizeHandles(shapeElement);
-            makeDraggable(shapeElement);
-            shapeElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-                selectElement(shapeElement);
-            });
-
-            layer.appendChild(shapeElement);
-
-            state.elements.push({
-                type: 'shape',
-                element: shapeElement,
-                page: pageNum,
-                shapeType: type
-            });
-
-            addToHistory('Added ' + type);
-        }
-
-        // Add Whiteout
-        function addWhiteout(pageNum, x, y) {
-            const layer = document.querySelector(`.annotation-layer[data-page="${pageNum}"]`);
-            
-            const whiteout = document.createElement('div');
-            whiteout.className = 'whiteout-box';
-            whiteout.style.left = x + 'px';
-            whiteout.style.top = y + 'px';
-            whiteout.style.width = '100px';
-            whiteout.style.height = '50px';
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                whiteout.remove();
-            });
-            whiteout.appendChild(deleteBtn);
-
-            addResizeHandles(whiteout);
-            makeDraggable(whiteout);
-            whiteout.addEventListener('click', (e) => {
-                e.stopPropagation();
-                selectElement(whiteout);
-            });
-
-            layer.appendChild(whiteout);
-
-            state.elements.push({
-                type: 'whiteout',
-                element: whiteout,
-                page: pageNum
-            });
-
-            addToHistory('Added whiteout');
-        }
-
-        // Make Element Draggable
-        function makeDraggable(element) {
-            let isDragging = false;
-            let currentX;
-            let currentY;
-            let initialX;
-            let initialY;
-
-            element.addEventListener('mousedown', dragStart);
-
-            function dragStart(e) {
-                if (e.target.classList.contains('resize-handle') || 
-                    e.target.tagName === 'TEXTAREA' ||
-                    e.target.tagName === 'BUTTON') {
-                    return;
-                }
-
-                initialX = e.clientX - element.offsetLeft;
-                initialY = e.clientY - element.offsetTop;
-
-                isDragging = true;
-                document.addEventListener('mousemove', drag);
-                document.addEventListener('mouseup', dragEnd);
-            }
-
-            function drag(e) {
-                if (isDragging) {
-                    e.preventDefault();
-                    currentX = e.clientX - initialX;
-                    currentY = e.clientY - initialY;
-
-                    element.style.left = currentX + 'px';
-                    element.style.top = currentY + 'px';
-                }
-            }
-
-            function dragEnd() {
-                isDragging = false;
-                document.removeEventListener('mousemove', drag);
-                document.removeEventListener('mouseup', dragEnd);
-            }
-        }
-
-        // Add Resize Handles
-        function addResizeHandles(element) {
-            const positions = ['nw', 'ne', 'sw', 'se'];
-            positions.forEach(pos => {
-                const handle = document.createElement('div');
-                handle.className = `resize-handle ${pos}`;
-                handle.addEventListener('mousedown', (e) => startResize(e, element, pos));
-                element.appendChild(handle);
-            });
-        }
-
-        function startResize(e, element, position) {
-            e.stopPropagation();
-            e.preventDefault();
-            
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const startWidth = element.offsetWidth;
-            const startHeight = element.offsetHeight;
-            const startLeft = element.offsetLeft;
-            const startTop = element.offsetTop;
-
-            // Prevent text selection during resize
-            document.body.style.userSelect = 'none';
-
-            function resize(e) {
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
-
-                if (position.includes('e')) {
-                    const newWidth = Math.max(100, startWidth + dx);
-                    element.style.width = newWidth + 'px';
-                }
-                if (position.includes('w')) {
-                    const newWidth = Math.max(100, startWidth - dx);
-                    element.style.width = newWidth + 'px';
-                    element.style.left = (startLeft + dx) + 'px';
-                }
-                if (position.includes('s')) {
-                    const newHeight = Math.max(30, startHeight + dy);
-                    element.style.height = newHeight + 'px';
-                }
-                if (position.includes('n')) {
-                    const newHeight = Math.max(30, startHeight - dy);
-                    element.style.height = newHeight + 'px';
-                    element.style.top = (startTop + dy) + 'px';
-                }
-
-                // Update textarea if it exists
-                const textarea = element.querySelector('textarea');
-                if (textarea) {
-                    textarea.style.height = 'auto';
-                    textarea.style.height = Math.max(textarea.scrollHeight, 30) + 'px';
-                }
-            }
-
-            function stopResize() {
-                document.removeEventListener('mousemove', resize);
-                document.removeEventListener('mouseup', stopResize);
-                document.body.style.userSelect = '';
-                addToHistory('Resized element');
-            }
-
-            document.addEventListener('mousemove', resize);
-            document.addEventListener('mouseup', stopResize);
-        }
-
-        // Select Element
-        function selectElement(element) {
-            // Deselect previous
-            document.querySelectorAll('.editable-text, .editable-image, .whiteout-box, .shape-element').forEach(el => {
-                el.classList.remove('selected');
-            });
-
-            // Select new
-            element.classList.add('selected');
-            state.selectedElement = element;
-
-            // Show properties
-            showProperties(element);
-        }
-
-        function showProperties(element) {
-            document.getElementById('textProperties').style.display = 'none';
-            document.getElementById('imageProperties').style.display = 'none';
-
-            if (element.classList.contains('editable-text')) {
-                document.getElementById('textProperties').style.display = 'block';
-                const textarea = element.querySelector('textarea');
-                document.getElementById('textContentInput').value = textarea.value;
-                document.getElementById('fontSizeInput').value = parseInt(element.style.fontSize);
-                document.getElementById('textColorInput').value = rgbToHex(element.style.color);
-                updateColorPreview();
-            } else if (element.classList.contains('editable-image')) {
-                document.getElementById('imageProperties').style.display = 'block';
-                document.getElementById('imageWidthInput').value = element.offsetWidth;
-                document.getElementById('imageHeightInput').value = element.offsetHeight;
-            }
-
-            document.getElementById('propertiesPanel').classList.add('active');
-        }
-
-        // Properties Updates
-        function updateTextContent(e) {
-            if (!state.selectedElement) return;
-            const textarea = state.selectedElement.querySelector('textarea');
-            if (textarea) {
-                textarea.value = e.target.value;
-            }
-        }
-
-        function updateFontSize(e) {
-            if (!state.selectedElement) return;
-            state.selectedElement.style.fontSize = e.target.value + 'px';
-        }
-
-        function updateFontFamily(e) {
-            if (!state.selectedElement) return;
-            state.selectedElement.style.fontFamily = e.target.value;
-        }
-
-        function updateTextColor(e) {
-            if (!state.selectedElement) return;
-            state.selectedElement.style.color = e.target.value;
-            updateColorPreview();
-        }
-
-        function updateColorPreview() {
-            const color = document.getElementById('textColorInput').value;
-            document.getElementById('textColorPreview').style.background = color;
-            document.getElementById('textColorValue').textContent = color;
-        }
-
         // Utility Functions
         function rgbToHex(rgb) {
             if (rgb.startsWith('#')) return rgb;
@@ -2749,57 +2384,35 @@
 
         // Test PDF Clickable
         function testPDFClickable() {
-            showAlert('Testing PDF layers... Click anywhere on the PDF!', 'info');
+            showAlert('Click anywhere on the PDF to test! Green marker means success.', 'info');
             
-            // Add temporary click listeners to all layers
-            const layers = document.querySelectorAll('.annotation-layer');
-            let clickCount = 0;
+            const testHandler = (e) => {
+                const marker = document.createElement('div');
+                marker.style.position = 'absolute';
+                marker.style.left = (e.clientX - e.target.getBoundingClientRect().left) + 'px';
+                marker.style.top = (e.clientY - e.target.getBoundingClientRect().top) + 'px';
+                marker.style.width = '20px';
+                marker.style.height = '20px';
+                marker.style.background = '#00BB88';
+                marker.style.borderRadius = '50%';
+                marker.style.border = '3px solid white';
+                marker.style.zIndex = '1000';
+                marker.style.pointerEvents = 'none';
+                e.target.appendChild(marker);
+                
+                setTimeout(() => {
+                    marker.remove();
+                }, 2000);
+            };
             
-            layers.forEach((layer, index) => {
-                const pageNum = layer.dataset.page;
-                
-                // Add visible indicator
-                layer.style.outline = '3px solid red';
-                layer.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-                
-                const testHandler = (e) => {
-                    clickCount++;
-                    const rect = layer.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    
-                    showAlert(`✅ PDF is clickable! Page ${pageNum} clicked at (${Math.round(x)}, ${Math.round(y)})`, 'success');
-                    
-                    // Add a test marker
-                    const marker = document.createElement('div');
-                    marker.style.position = 'absolute';
-                    marker.style.left = x + 'px';
-                    marker.style.top = y + 'px';
-                    marker.style.width = '20px';
-                    marker.style.height = '20px';
-                    marker.style.background = 'red';
-                    marker.style.borderRadius = '50%';
-                    marker.style.border = '3px solid white';
-                    marker.style.zIndex = '1000';
-                    marker.style.pointerEvents = 'none';
-                    layer.appendChild(marker);
-                    
-                    // Remove test styling after 2 seconds
-                    setTimeout(() => {
-                        layer.style.outline = '';
-                        layer.style.backgroundColor = '';
-                        layer.removeEventListener('click', testHandler);
-                        marker.remove();
-                    }, 2000);
-                };
-                
+            // Add test handler to all layers
+            document.querySelectorAll('.annotation-layer, .text-overlay').forEach(layer => {
                 layer.addEventListener('click', testHandler);
             });
             
             setTimeout(() => {
-                layers.forEach(layer => {
-                    layer.style.outline = '';
-                    layer.style.backgroundColor = '';
+                document.querySelectorAll('.annotation-layer, .text-overlay').forEach(layer => {
+                    layer.removeEventListener('click', testHandler);
                 });
             }, 10000);
         }
@@ -2813,12 +2426,6 @@
 
         // History management
         function addToHistory(action) {
-            // Remove any future history if we're not at the end
-            if (state.historyIndex < state.history.length - 1) {
-                state.history = state.history.slice(0, state.historyIndex + 1);
-            }
-
-            // Save current state
             const historyState = {
                 action: action,
                 elements: state.elements.map(el => ({
@@ -2834,17 +2441,15 @@
                         fontFamily: el.element.style.fontFamily,
                         color: el.element.style.color
                     },
-                    content: el.type === 'text' ? el.element.querySelector('textarea')?.value : null,
+                    content: el.content,
                     src: el.src
-                })),
-                timestamp: Date.now()
+                }))
             };
 
             state.history.push(historyState);
             state.historyIndex++;
 
             updateHistoryButtons();
-            console.log('History added:', action, 'Index:', state.historyIndex);
         }
 
         function undo() {
@@ -2853,8 +2458,6 @@
                 restoreHistoryState(state.history[state.historyIndex]);
                 showAlert('Undo: ' + state.history[state.historyIndex].action, 'info');
                 updateHistoryButtons();
-            } else {
-                showAlert('Nothing to undo', 'warning');
             }
         }
 
@@ -2864,8 +2467,6 @@
                 restoreHistoryState(state.history[state.historyIndex]);
                 showAlert('Redo: ' + state.history[state.historyIndex].action, 'success');
                 updateHistoryButtons();
-            } else {
-                showAlert('Nothing to redo', 'warning');
             }
         }
 
@@ -2879,24 +2480,17 @@
 
             // Restore elements from history
             historyState.elements.forEach(savedEl => {
-                const layer = document.querySelector(`.annotation-layer[data-page="${savedEl.page}"]`);
-                if (!layer) return;
+                const wrapper = document.querySelector(`.pdf-page-wrapper[data-page="${savedEl.page}"]`);
+                if (!wrapper) return;
+                
+                const annotationLayer = wrapper.querySelector('.annotation-layer');
+                if (!annotationLayer) return;
 
-                // Create element from saved HTML
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = savedEl.html;
                 const element = tempDiv.firstChild;
 
-                // Restore styles
                 Object.assign(element.style, savedEl.style);
-
-                // Restore content for text elements
-                if (savedEl.type === 'text' && savedEl.content) {
-                    const textarea = element.querySelector('textarea');
-                    if (textarea) {
-                        textarea.value = savedEl.content;
-                    }
-                }
 
                 // Re-attach event listeners
                 const deleteBtn = element.querySelector('.delete-btn');
@@ -2914,23 +2508,13 @@
                     selectElement(element);
                 });
 
-                if (savedEl.type === 'text') {
-                    const textarea = element.querySelector('textarea');
-                    if (textarea) {
-                        textarea.addEventListener('input', () => {
-                            element.dataset.content = textarea.value;
-                            textarea.style.height = 'auto';
-                            textarea.style.height = textarea.scrollHeight + 'px';
-                        });
-                    }
-                }
-
-                layer.appendChild(element);
+                annotationLayer.appendChild(element);
 
                 state.elements.push({
                     type: savedEl.type,
                     element: element,
                     page: savedEl.page,
+                    content: savedEl.content,
                     src: savedEl.src
                 });
             });
@@ -2961,11 +2545,11 @@
                     const { height } = page.getSize();
 
                     if (item.type === 'text') {
-                        const textarea = item.element.querySelector('textarea');
-                        const text = textarea.value;
+                        const textSpan = item.element.querySelector('span');
+                        const text = textSpan ? textSpan.textContent : '';
                         if (!text) continue;
 
-                        const fontSize = parseInt(item.element.style.fontSize);
+                        const fontSize = parseInt(item.element.style.fontSize) || 16;
                         const x = item.element.offsetLeft;
                         const y = height - item.element.offsetTop - fontSize;
 
@@ -2977,6 +2561,8 @@
                         });
                     } else if (item.type === 'image') {
                         const img = item.element.querySelector('img');
+                        if (!img) continue;
+                        
                         const imageBytes = await fetch(img.src).then(res => res.arrayBuffer());
                         
                         let image;
@@ -2994,18 +2580,6 @@
                             y: y,
                             width: item.element.offsetWidth,
                             height: item.element.offsetHeight
-                        });
-                    } else if (item.type === 'whiteout') {
-                        const x = item.element.offsetLeft;
-                        const y = height - item.element.offsetTop - item.element.offsetHeight;
-
-                        page.drawRectangle({
-                            x: x,
-                            y: y,
-                            width: item.element.offsetWidth,
-                            height: item.element.offsetHeight,
-                            color: PDFLib.rgb(1, 1, 1),
-                            borderWidth: 0
                         });
                     }
                 }
@@ -3057,15 +2631,16 @@
             }, 3000);
         }
 
-        // Signature
-        function addSignature(pageNum, x, y) {
-            if (!state.signature) {
-                showAlert('Please create a signature first', 'warning');
-                return;
+        // Handle image placement
+        document.addEventListener('click', (e) => {
+            if (state.imageToAdd && e.target.classList.contains('annotation-layer')) {
+                const pageNum = parseInt(e.target.dataset.page);
+                const rect = e.target.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                addImage(pageNum, x, y, state.imageToAdd);
             }
-            addImage(pageNum, x, y, state.signature);
-            showAlert('Signature added!', 'success');
-        }
+        });
 
         // Keyboard Shortcuts
         function handleKeyboard(e) {
@@ -3090,19 +2665,9 @@
             if (e.key === 'Delete' && state.selectedElement) {
                 state.selectedElement.remove();
                 state.selectedElement = null;
+                showAlert('Element deleted', 'success');
             }
         }
-
-        // Handle image placement
-        document.addEventListener('click', (e) => {
-            if (state.imageToAdd && e.target.classList.contains('annotation-layer')) {
-                const pageNum = parseInt(e.target.dataset.page);
-                const rect = e.target.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                addImage(pageNum, x, y, state.imageToAdd);
-            }
-        });
     </script>
 </body>
 </html>
