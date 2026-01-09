@@ -1196,8 +1196,21 @@
         document.addEventListener('DOMContentLoaded', init);
 
         function init() {
+            // Check if libraries are loaded
+            if (typeof pdfjsLib === 'undefined') {
+                showAlert('Error: PDF.js library failed to load. Please refresh the page.', 'error');
+                return;
+            }
+            
+            if (typeof PDFLib === 'undefined') {
+                showAlert('Error: PDF-lib library failed to load. Please refresh the page.', 'error');
+                return;
+            }
+
             setupEventListeners();
             setupSignatureCanvas();
+            
+            console.log('ProPDF Editor initialized successfully');
         }
 
         function setupEventListeners() {
@@ -1223,8 +1236,13 @@
                 e.preventDefault();
                 uploadBox.style.borderColor = 'var(--primary-color)';
                 const file = e.dataTransfer.files[0];
-                if (file && file.type === 'application/pdf') {
-                    handleFileSelect({ target: { files: [file] } });
+                if (file) {
+                    // Check by extension since MIME type can be unreliable
+                    if (file.name.toLowerCase().endsWith('.pdf')) {
+                        handleFileSelect({ target: { files: [file] } });
+                    } else {
+                        showAlert('Please drop a PDF file', 'error');
+                    }
                 }
             });
 
@@ -1243,6 +1261,11 @@
             document.getElementById('zoomOutBtn').addEventListener('click', () => zoom(-0.1));
             document.getElementById('propertiesBtn').addEventListener('click', togglePropertiesPanel);
             document.getElementById('saveBtn').addEventListener('click', savePDF);
+            document.getElementById('newDocBtn').addEventListener('click', () => {
+                if (confirm('Start over with a new PDF? Any unsaved changes will be lost.')) {
+                    location.reload();
+                }
+            });
 
             // Signature modal
             document.getElementById('closeSignatureModal').addEventListener('click', closeSignatureModal);
@@ -1272,8 +1295,15 @@
         // File Handling
         async function handleFileSelect(e) {
             const file = e.target.files[0];
-            if (!file || file.type !== 'application/pdf') {
-                showAlert('Please select a valid PDF file', 'error');
+            if (!file) {
+                showAlert('Please select a file', 'error');
+                return;
+            }
+
+            // Check file extension
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.pdf')) {
+                showAlert('Please select a PDF file', 'error');
                 return;
             }
 
@@ -1281,15 +1311,40 @@
             showLoading(true);
 
             try {
+                // Read file as array buffer
                 const arrayBuffer = await file.arrayBuffer();
-                state.pdfData = new Uint8Array(arrayBuffer);
+                
+                // Validate PDF header
+                const bytes = new Uint8Array(arrayBuffer);
+                const header = String.fromCharCode.apply(null, bytes.slice(0, 5));
+                
+                if (!header.startsWith('%PDF-')) {
+                    throw new Error('Invalid PDF file - no PDF header found. The file may be corrupted or not a valid PDF.');
+                }
+
+                state.pdfData = bytes;
 
                 // Load with PDF.js for rendering
-                const loadingTask = pdfjsLib.getDocument({ data: state.pdfData });
+                const loadingTask = pdfjsLib.getDocument({ 
+                    data: state.pdfData,
+                    verbosity: 0,
+                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                    cMapPacked: true,
+                    standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/'
+                });
+                
                 state.pdfDoc = await loadingTask.promise;
 
                 // Load with PDF-lib for editing
-                state.pdfLibDoc = await PDFLib.PDFDocument.load(state.pdfData);
+                try {
+                    state.pdfLibDoc = await PDFLib.PDFDocument.load(state.pdfData, {
+                        ignoreEncryption: true,
+                        updateMetadata: false
+                    });
+                } catch (libError) {
+                    console.warn('PDF-lib loading warning:', libError);
+                    // Continue anyway - we can still render with PDF.js
+                }
 
                 await renderAllPages();
                 
@@ -1299,10 +1354,21 @@
                 document.getElementById('saveBtn').style.display = 'flex';
                 document.getElementById('newDocBtn').style.display = 'flex';
 
-                showAlert('PDF loaded successfully!', 'success');
+                showAlert('PDF loaded successfully! ' + state.pdfDoc.numPages + ' pages', 'success');
             } catch (error) {
                 console.error('Error loading PDF:', error);
-                showAlert('Failed to load PDF: ' + error.message, 'error');
+                
+                let errorMessage = 'Failed to load PDF: ';
+                if (error.message) {
+                    errorMessage += error.message;
+                } else {
+                    errorMessage += 'Unknown error occurred. Please make sure the file is a valid PDF.';
+                }
+                
+                showAlert(errorMessage, 'error');
+                
+                // Reset file input
+                document.getElementById('fileInput').value = '';
             } finally {
                 showLoading(false);
             }
@@ -1318,41 +1384,58 @@
         }
 
         async function renderPage(pageNum, container) {
-            const page = await state.pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: state.scale });
+            try {
+                const page = await state.pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: state.scale });
 
-            const wrapper = document.createElement('div');
-            wrapper.className = 'pdf-page-wrapper';
-            wrapper.dataset.page = pageNum;
-            wrapper.style.width = viewport.width + 'px';
+                const wrapper = document.createElement('div');
+                wrapper.className = 'pdf-page-wrapper';
+                wrapper.dataset.page = pageNum;
+                wrapper.style.width = viewport.width + 'px';
 
-            const badge = document.createElement('div');
-            badge.className = 'page-number-badge';
-            badge.textContent = `Page ${pageNum}`;
-            wrapper.appendChild(badge);
+                const badge = document.createElement('div');
+                badge.className = 'page-number-badge';
+                badge.textContent = `Page ${pageNum}`;
+                wrapper.appendChild(badge);
 
-            const canvas = document.createElement('canvas');
-            canvas.className = 'pdf-page-canvas';
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+                const canvas = document.createElement('canvas');
+                canvas.className = 'pdf-page-canvas';
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
 
-            const context = canvas.getContext('2d');
-            await page.render({ canvasContext: context, viewport: viewport }).promise;
+                const context = canvas.getContext('2d');
+                
+                try {
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                } catch (renderError) {
+                    console.error('Error rendering page ' + pageNum + ':', renderError);
+                    // Show error on canvas
+                    context.fillStyle = '#f8f9fa';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.fillStyle = '#e74c3c';
+                    context.font = '16px Inter';
+                    context.textAlign = 'center';
+                    context.fillText('Error rendering page ' + pageNum, canvas.width / 2, canvas.height / 2);
+                }
 
-            wrapper.appendChild(canvas);
+                wrapper.appendChild(canvas);
 
-            // Add annotation layer
-            const annotationLayer = document.createElement('div');
-            annotationLayer.className = 'annotation-layer';
-            annotationLayer.dataset.page = pageNum;
-            annotationLayer.style.width = viewport.width + 'px';
-            annotationLayer.style.height = viewport.height + 'px';
-            wrapper.appendChild(annotationLayer);
+                // Add annotation layer
+                const annotationLayer = document.createElement('div');
+                annotationLayer.className = 'annotation-layer';
+                annotationLayer.dataset.page = pageNum;
+                annotationLayer.style.width = viewport.width + 'px';
+                annotationLayer.style.height = viewport.height + 'px';
+                wrapper.appendChild(annotationLayer);
 
-            // Click handler for adding elements
-            annotationLayer.addEventListener('click', (e) => handleCanvasClick(e, pageNum));
+                // Click handler for adding elements
+                annotationLayer.addEventListener('click', (e) => handleCanvasClick(e, pageNum));
 
-            container.appendChild(wrapper);
+                container.appendChild(wrapper);
+            } catch (error) {
+                console.error('Error setting up page ' + pageNum + ':', error);
+                showAlert('Error loading page ' + pageNum + ': ' + error.message, 'warning');
+            }
         }
 
         // Tool Activation
